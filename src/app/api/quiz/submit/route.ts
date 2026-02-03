@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { gradeMCQ } from '@/lib/grading/mcq'
 import { gradeWithRetry } from '@/lib/grading/open-answer'
 import { calculateLevel } from '@/lib/grading/level-calculator'
-import { Database } from '@/lib/supabase/types'
+import { Database, Question } from '@/lib/supabase/types'
 
 type AttemptInsert = Database['public']['Tables']['attempt']['Insert']
 
@@ -17,6 +17,98 @@ interface SubmitRequest {
     selectedChoice: string | null
     answerText: string | null
   }[]
+}
+
+// Background grading function - runs without blocking the response
+async function gradeOpenQuestionsInBackground(
+  attemptId: string,
+  openQuestions: Question[],
+  answers: SubmitRequest['answers'],
+  mcqScore: number,
+  mcqTotal: number,
+  maxScore: number,
+  openTotal: number
+) {
+  // Create a new Supabase client for background processing
+  const supabase = await createClient()
+  let openScore = 0
+  let gradedCount = 0
+
+  for (const question of openQuestions) {
+    const answer = answers.find((a) => a.questionId === question.id)
+    const answerText = answer?.answerText || ''
+
+    try {
+      // Add delay between requests to avoid rate limiting
+      if (gradedCount > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+
+      const result = await gradeWithRetry(question, answerText)
+
+      // Update the answer with AI grading
+      await supabase
+        .from('answer')
+        // @ts-expect-error - Supabase types mismatch
+        .update({
+          score: result.score,
+          ai_feedback: result.feedback,
+          ai_graded_at: new Date().toISOString(),
+        })
+        .eq('attempt_id', attemptId)
+        .eq('question_id', question.id)
+
+      gradedCount++
+      openScore += result.score
+
+      // Update progress
+      await supabase
+        .from('attempt')
+        // @ts-expect-error - Supabase types mismatch
+        .update({
+          grading_progress: gradedCount,
+          open_score: openScore,
+        })
+        .eq('id', attemptId)
+
+    } catch (error) {
+      console.error(`Error grading question ${question.id}:`, error)
+      gradedCount++
+
+      // Still update progress even on error
+      await supabase
+        .from('attempt')
+        // @ts-expect-error - Supabase types mismatch
+        .update({
+          grading_progress: gradedCount,
+        })
+        .eq('id', attemptId)
+    }
+  }
+
+  // Calculate final results
+  const totalScore = mcqScore + openScore
+  const finalLevel = calculateLevel(totalScore, maxScore)
+
+  // Update attempt with final results
+  await supabase
+    .from('attempt')
+    // @ts-expect-error - Supabase types mismatch
+    .update({
+      mcq_score: mcqScore,
+      mcq_total: mcqTotal,
+      open_score: openScore,
+      open_total: openTotal,
+      total_score: totalScore,
+      max_score: maxScore,
+      level: finalLevel,
+      status: 'graded',
+      is_final: true,
+      grading_progress: openQuestions.length,
+    })
+    .eq('id', attemptId)
+
+  console.log(`[Grading] Completed grading for attempt ${attemptId}. Score: ${totalScore}/${maxScore}, Level: ${finalLevel}`)
 }
 
 export async function POST(request: NextRequest) {
@@ -39,8 +131,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const mcqQuestions = questions.filter((q) => q.type === 'mcq')
-    const openQuestions = questions.filter((q) => q.type === 'open')
+    // Cast to proper type (Supabase types mismatch workaround)
+    const typedQuestions = questions as unknown as Question[]
+    const openQuestions = typedQuestions.filter((q) => q.type === 'open')
 
     // Create attempt with grading status
     const attemptInsert = {
@@ -48,7 +141,7 @@ export async function POST(request: NextRequest) {
       share_link_id: shareLinkId,
       student_name: studentName,
       student_email: studentEmail,
-      status: openQuestions.length > 0 ? 'grading' : 'submitted',
+      status: openQuestions.length > 0 ? 'grading' : 'graded',
       submitted_at: new Date().toISOString(),
       grading_progress: 0,
       grading_total: openQuestions.length,
@@ -69,18 +162,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Grade MCQ answers immediately
+    // Grade MCQ answers immediately (fast, no API calls)
     let mcqScore = 0
     let mcqTotal = 0
 
     // Calculate max scores
-    const maxScore = questions.reduce((sum, q) => sum + q.points, 0)
+    const maxScore = typedQuestions.reduce((sum, q) => sum + q.points, 0)
     const openTotal = openQuestions.reduce((sum, q) => sum + q.points, 0)
 
     // Process and save answers
     const answerInserts = []
 
-    for (const question of questions) {
+    for (const question of typedQuestions) {
       const answer = answers.find((a) => a.questionId === question.id)
 
       if (question.type === 'mcq') {
@@ -100,7 +193,7 @@ export async function POST(request: NextRequest) {
           attempt_id: attempt.id,
           question_id: question.id,
           answer_text: answer?.answerText ?? null,
-          score: null, // Will be filled by grading
+          score: null, // Will be filled by background grading
         })
       }
     }
@@ -108,82 +201,59 @@ export async function POST(request: NextRequest) {
     // Insert all answers
     const { error: answersError } = await supabase
       .from('answer')
+      // @ts-expect-error - Supabase types mismatch
       .insert(answerInserts)
 
     if (answersError) {
       console.error('Error inserting answers:', answersError)
     }
 
-    // Grade open questions sequentially to avoid API rate limits
-    let openScore = 0
+    // If there are open questions, start background grading
     if (openQuestions.length > 0) {
-      let gradedCount = 0
+      // Fire and forget - don't await this
+      gradeOpenQuestionsInBackground(
+        attempt.id,
+        openQuestions as Question[],
+        answers,
+        mcqScore,
+        mcqTotal,
+        maxScore,
+        openTotal
+      ).catch(error => {
+        console.error(`[Grading] Background grading failed for attempt ${attempt.id}:`, error)
+      })
 
-      for (const question of openQuestions) {
-        const answer = answers.find((a) => a.questionId === question.id)
-        const answerText = answer?.answerText || ''
-
-        try {
-          // Add delay between requests to avoid rate limiting
-          if (gradedCount > 0) {
-            await new Promise(resolve => setTimeout(resolve, 500))
-          }
-          const result = await gradeWithRetry(question, answerText)
-
-          // Update the answer with AI grading
-          await supabase
-            .from('answer')
-            // @ts-expect-error - Supabase types mismatch
-            .update({
-              score: result.score,
-              ai_feedback: result.feedback,
-              ai_graded_at: new Date().toISOString(),
-            })
-            .eq('attempt_id', attempt.id)
-            .eq('question_id', question.id)
-
-          gradedCount++
-
-          // Update progress
-          await supabase
-            .from('attempt')
-            .update({
-              grading_progress: gradedCount,
-            })
-            .eq('id', attempt.id)
-
-          openScore += result.score
-        } catch (error) {
-          console.error(`Error grading question ${question.id}:`, error)
-          gradedCount++
-        }
-      }
+      // Return immediately - student goes to results page to wait
+      return NextResponse.json({
+        attemptId: attempt.id,
+        status: 'grading',
+        isFinal: false,
+      })
     }
 
-    // Calculate final results
-    const totalScore = mcqScore + openScore
-    const finalLevel = calculateLevel(totalScore, maxScore)
+    // No open questions - finalize immediately
+    const finalLevel = calculateLevel(mcqScore, maxScore)
 
-    // Update attempt with final results
     await supabase
       .from('attempt')
+      // @ts-expect-error - Supabase types mismatch
       .update({
         mcq_score: mcqScore,
         mcq_total: mcqTotal,
-        open_score: openScore,
-        open_total: openTotal,
-        total_score: totalScore,
+        open_score: 0,
+        open_total: 0,
+        total_score: mcqScore,
         max_score: maxScore,
         level: finalLevel,
         status: 'graded',
         is_final: true,
-        grading_progress: openQuestions.length,
       })
       .eq('id', attempt.id)
 
     return NextResponse.json({
       attemptId: attempt.id,
       level: finalLevel,
+      status: 'graded',
       isFinal: true,
     })
   } catch (error) {

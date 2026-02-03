@@ -11,7 +11,15 @@ export function gradeMCQ(
   question: Question,
   selectedChoice: string | null
 ): MCQGradingResult {
-  const isCorrect = selectedChoice === question.correct_choice
+  // Support both single correct_choice (string) and multiple correct_choices (array)
+  // The correct_choice field can contain comma-separated values for multiple correct answers
+  let isCorrect = false
+
+  if (selectedChoice && question.correct_choice) {
+    // Check if correct_choice contains multiple answers (comma-separated)
+    const correctChoices = question.correct_choice.split(',').map(c => c.trim())
+    isCorrect = correctChoices.includes(selectedChoice)
+  }
 
   return {
     questionId: question.id,

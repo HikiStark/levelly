@@ -53,6 +53,24 @@ IMPORTANT GRADING PRINCIPLES:
 - Minor spelling mistakes or grammatical errors should not significantly affect the grade if the meaning is clear
 - Partial credit should be given for partially correct answers
 
+HANDLING CONVERSATIONAL/CASUAL ANSWERS:
+- Students may add filler phrases like "i think", "probably", "maybe", "I believe", "I guess"
+- IGNORE these filler phrases and extract the CORE ANSWER to grade
+- Example: "57 i think" should be graded as if student answered "57"
+- Example: "baku probably" should be graded as if student answered "baku"
+- Only the factual content matters, not the student's expressed confidence level
+
+FACTUAL VERIFICATION:
+- For questions about facts (ages, dates, capitals, historical events, etc.), use your knowledge to verify
+- If no reference answer is provided, verify against commonly known facts
+- Example: "How old is Hugh Jackman?" - verify the student's number against Hugh Jackman's actual birth year (October 12, 1968)
+
+SPECIAL RULE FOR MULTIPLE ANSWERS (HALF CREDIT):
+- If the student provides MULTIPLE DIFFERENT answers separated by "or", "either", etc. (e.g., "56 or 57", "Paris or London")
+- AND one of those answers is correct
+- Then give HALF CREDIT (score of 5 out of 10) with feedback noting the uncertainty
+- NOTE: A single answer with "i think" is NOT multiple answers - grade it normally
+
 ${question.rubric ? `\nGRADING RUBRIC:\n${question.rubric}` : ''}
 ${question.reference_answer ? `\nREFERENCE ANSWER (for meaning comparison, not exact matching):\n${question.reference_answer}` : ''}
 
@@ -74,20 +92,28 @@ Respond with valid JSON:
 STUDENT'S ANSWER: ${trimmedAnswer}`
 
   try {
+    const model = process.env.OPENAI_MODEL || 'gpt-5-mini'
+    console.log(`[Grading] Using model: ${model} for question: ${question.id}`)
+
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5-mini',
+      model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       response_format: { type: 'json_object' },
-      max_completion_tokens: 300,
+      max_tokens: 500,
+    })
+
+    console.log(`[Grading] Response received for question ${question.id}:`, {
+      finishReason: response.choices[0]?.finish_reason,
+      hasContent: !!response.choices[0]?.message?.content,
     })
 
     const content = response.choices[0]?.message?.content
     if (!content) {
       throw new GradingError(
-        'OpenAI returned an empty response',
+        `OpenAI returned an empty response. Finish reason: ${response.choices[0]?.finish_reason}`,
         'EMPTY_RESPONSE'
       )
     }
