@@ -60,9 +60,54 @@ export async function GET(
       redirectUrl = (redirect as { redirect_url: string } | null)?.redirect_url || null
     }
 
+    // Get questionnaire if exists and enabled
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let questionnaire: any = null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let questionnaireQuestions: any[] = []
+    let questionnaireSubmitted = false
+
+    if (attempt.is_final) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: q } = await (supabase as any)
+        .from('questionnaire')
+        .select('*')
+        .eq('assignment_id', attempt.assignment_id)
+        .eq('is_enabled', true)
+        .maybeSingle()
+
+      if (q) {
+        questionnaire = q
+
+        // Get questions
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: questions } = await (supabase as any)
+          .from('questionnaire_question')
+          .select('*')
+          .eq('questionnaire_id', q.id)
+          .order('order_index', { ascending: true })
+
+        questionnaireQuestions = questions || []
+
+        // Check if already submitted
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: response } = await (supabase as any)
+          .from('questionnaire_response')
+          .select('id')
+          .eq('questionnaire_id', q.id)
+          .eq('attempt_id', id)
+          .maybeSingle()
+
+        questionnaireSubmitted = !!response
+      }
+    }
+
     return NextResponse.json({
       attempt,
       redirectUrl,
+      questionnaire,
+      questionnaireQuestions,
+      questionnaireSubmitted,
     })
   } catch (error) {
     console.error('Error fetching attempt:', error)

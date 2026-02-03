@@ -9,6 +9,7 @@ import { AddQuestionDialog } from './add-question-dialog'
 import { ShareLinkSection } from './share-link-section'
 import { LevelRedirectSection } from './level-redirect-section'
 import { PublishButton } from './publish-button'
+import { QuestionnaireSection } from './questionnaire-section'
 
 export default async function AssignmentPage({
   params,
@@ -44,6 +45,25 @@ export default async function AssignmentPage({
     .from('level_redirect')
     .select('*')
     .eq('assignment_id', id)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: questionnaire } = await (supabase as any)
+    .from('questionnaire')
+    .select('*')
+    .eq('assignment_id', id)
+    .maybeSingle()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let questionnaireQuestions: any[] = []
+  if (questionnaire) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any)
+      .from('questionnaire_question')
+      .select('*')
+      .eq('questionnaire_id', questionnaire.id)
+      .order('order_index', { ascending: true })
+    questionnaireQuestions = data || []
+  }
 
   return (
     <div className="space-y-8">
@@ -97,6 +117,23 @@ export default async function AssignmentPage({
         </CardHeader>
         <CardContent>
           <LevelRedirectSection assignmentId={id} redirects={redirects || []} />
+        </CardContent>
+      </Card>
+
+      {/* Student Questionnaire */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Student Questionnaire</CardTitle>
+          <CardDescription>
+            Optional feedback form shown to students after they see their results
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <QuestionnaireSection
+            assignmentId={id}
+            questionnaire={questionnaire}
+            questions={questionnaireQuestions}
+          />
         </CardContent>
       </Card>
 

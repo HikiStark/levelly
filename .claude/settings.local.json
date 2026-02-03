@@ -6,6 +6,9 @@
       "Bash(test:*)",
       "Bash(npx tsc:*)",
       "Bash(npm run build:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\hikir\\Documents\\DEV\\levelly"
     ]
   }
 }

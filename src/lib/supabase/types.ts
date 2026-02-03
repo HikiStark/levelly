@@ -6,6 +6,11 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Questionnaire question options types
+export type QuestionnaireQuestionOptions =
+  | { id: string; text: string }[] // MCQ options
+  | { min: number; max: number; labels?: Record<string, string> } // Rating options
+
 export interface Database {
   public: {
     Tables: {
@@ -245,6 +250,113 @@ export interface Database {
           redirect_url?: string
         }
       }
+      questionnaire: {
+        Row: {
+          id: string
+          assignment_id: string
+          title: string
+          description: string | null
+          is_enabled: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          assignment_id: string
+          title?: string
+          description?: string | null
+          is_enabled?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          assignment_id?: string
+          title?: string
+          description?: string | null
+          is_enabled?: boolean
+          created_at?: string
+        }
+      }
+      questionnaire_question: {
+        Row: {
+          id: string
+          questionnaire_id: string
+          type: 'text' | 'rating' | 'mcq'
+          prompt: string
+          options: QuestionnaireQuestionOptions | null
+          is_required: boolean
+          order_index: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          questionnaire_id: string
+          type: 'text' | 'rating' | 'mcq'
+          prompt: string
+          options?: QuestionnaireQuestionOptions | null
+          is_required?: boolean
+          order_index: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          questionnaire_id?: string
+          type?: 'text' | 'rating' | 'mcq'
+          prompt?: string
+          options?: QuestionnaireQuestionOptions | null
+          is_required?: boolean
+          order_index?: number
+          created_at?: string
+        }
+      }
+      questionnaire_response: {
+        Row: {
+          id: string
+          questionnaire_id: string
+          attempt_id: string
+          submitted_at: string
+        }
+        Insert: {
+          id?: string
+          questionnaire_id: string
+          attempt_id: string
+          submitted_at?: string
+        }
+        Update: {
+          id?: string
+          questionnaire_id?: string
+          attempt_id?: string
+          submitted_at?: string
+        }
+      }
+      questionnaire_answer: {
+        Row: {
+          id: string
+          response_id: string
+          question_id: string
+          answer_text: string | null
+          answer_rating: number | null
+          answer_choice: string | null
+          submitted_at: string
+        }
+        Insert: {
+          id?: string
+          response_id: string
+          question_id: string
+          answer_text?: string | null
+          answer_rating?: number | null
+          answer_choice?: string | null
+          submitted_at?: string
+        }
+        Update: {
+          id?: string
+          response_id?: string
+          question_id?: string
+          answer_text?: string | null
+          answer_rating?: number | null
+          answer_choice?: string | null
+          submitted_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -277,4 +389,18 @@ export type AssignmentWithQuestions = Assignment & {
 
 export type AttemptWithAnswers = Attempt & {
   answers: (Answer & { question: Question })[]
+}
+
+// Questionnaire types
+export type Questionnaire = Database['public']['Tables']['questionnaire']['Row']
+export type QuestionnaireQuestion = Database['public']['Tables']['questionnaire_question']['Row']
+export type QuestionnaireResponse = Database['public']['Tables']['questionnaire_response']['Row']
+export type QuestionnaireAnswer = Database['public']['Tables']['questionnaire_answer']['Row']
+
+export type QuestionnaireWithQuestions = Questionnaire & {
+  questions: QuestionnaireQuestion[]
+}
+
+export type QuestionnaireResponseWithAnswers = QuestionnaireResponse & {
+  answers: (QuestionnaireAnswer & { question: QuestionnaireQuestion })[]
 }

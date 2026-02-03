@@ -5,6 +5,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getLevelDisplayName, getLevelColor, Level } from '@/lib/grading/level-calculator'
+import { QuestionnaireForm } from './questionnaire-form'
+
+interface QuestionnaireData {
+  id: string
+  title: string
+  description: string | null
+  is_enabled: boolean
+}
+
+interface QuestionnaireQuestionData {
+  id: string
+  type: 'text' | 'rating' | 'mcq'
+  prompt: string
+  options: { id: string; text: string }[] | { min: number; max: number } | null
+  is_required: boolean
+  order_index: number
+}
 
 interface AttemptData {
   id: string
@@ -48,6 +65,9 @@ export default function ResultsPage({
   const { attemptId } = use(params)
   const [attempt, setAttempt] = useState<AttemptData | null>(null)
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null)
+  const [questionnaire, setQuestionnaire] = useState<QuestionnaireData | null>(null)
+  const [questionnaireQuestions, setQuestionnaireQuestions] = useState<QuestionnaireQuestionData[]>([])
+  const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -65,6 +85,9 @@ export default function ResultsPage({
 
         setAttempt(data.attempt)
         setRedirectUrl(data.redirectUrl)
+        setQuestionnaire(data.questionnaire)
+        setQuestionnaireQuestions(data.questionnaireQuestions || [])
+        setQuestionnaireSubmitted(data.questionnaireSubmitted)
         setLoading(false)
 
         // Stop polling if final
@@ -256,6 +279,25 @@ export default function ResultsPage({
                   )}
                 </div>
               ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Questionnaire */}
+        {attempt.is_final && questionnaire && questionnaireQuestions.length > 0 && !questionnaireSubmitted && (
+          <QuestionnaireForm
+            questionnaire={questionnaire}
+            questions={questionnaireQuestions}
+            attemptId={attemptId}
+            onSubmitted={() => setQuestionnaireSubmitted(true)}
+          />
+        )}
+
+        {/* Thank you message after questionnaire submission */}
+        {attempt.is_final && questionnaireSubmitted && (
+          <Card>
+            <CardContent className="py-6 text-center">
+              <p className="text-green-600 font-medium">Thank you for your feedback!</p>
             </CardContent>
           </Card>
         )}
