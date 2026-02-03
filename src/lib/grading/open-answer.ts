@@ -102,7 +102,7 @@ STUDENT'S ANSWER: ${trimmedAnswer}`
         { role: 'user', content: userPrompt },
       ],
       response_format: { type: 'json_object' },
-      max_tokens: 500,
+      max_completion_tokens: 500,
     })
 
     console.log(`[Grading] Response received for question ${question.id}:`, {
