@@ -16,9 +16,24 @@ export function gradeMCQ(
   let isCorrect = false
 
   if (selectedChoice && question.correct_choice) {
-    // Check if correct_choice contains multiple answers (comma-separated)
+    // Parse correct choices (comma-separated)
     const correctChoices = question.correct_choice.split(',').map(c => c.trim())
-    isCorrect = correctChoices.includes(selectedChoice)
+    const isMultiAnswer = correctChoices.length > 1
+
+    if (isMultiAnswer) {
+      // For multi-answer questions: student must select ALL correct answers and no incorrect ones
+      const selectedChoices = selectedChoice.split(',').map(c => c.trim()).filter(Boolean)
+
+      // Check if arrays have the same elements
+      const correctSet = new Set(correctChoices)
+      const selectedSet = new Set(selectedChoices)
+
+      isCorrect = correctSet.size === selectedSet.size &&
+        [...correctSet].every(c => selectedSet.has(c))
+    } else {
+      // For single-answer questions: check if selected matches the correct answer
+      isCorrect = correctChoices.includes(selectedChoice)
+    }
   }
 
   return {

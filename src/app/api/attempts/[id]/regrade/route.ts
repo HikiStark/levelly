@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { regradeAttempt, verifyTeacherOwnership } from '@/lib/grading/regrade'
 
@@ -49,13 +50,24 @@ export async function POST(
     }
 
     // Start regrading
-    const { success, error } = await regradeAttempt(id)
+    const { success, error, backgroundWork } = await regradeAttempt(id)
 
     if (!success) {
       return NextResponse.json(
         { error: error || 'Failed to regrade attempt' },
         { status: 500 }
       )
+    }
+
+    // If there's background work (open questions to grade), run it with after()
+    if (backgroundWork) {
+      after(async () => {
+        try {
+          await backgroundWork()
+        } catch (err) {
+          console.error(`[Regrade] Background grading failed for attempt ${id}:`, err)
+        }
+      })
     }
 
     return NextResponse.json({

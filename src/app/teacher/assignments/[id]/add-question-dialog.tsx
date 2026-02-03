@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,8 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
     { id: 'd', text: '' },
   ])
   const [correctChoice, setCorrectChoice] = useState('a')
+  const [allowMultipleCorrect, setAllowMultipleCorrect] = useState(false)
+  const [correctChoices, setCorrectChoices] = useState<string[]>([])
 
   // Open answer fields
   const [referenceAnswer, setReferenceAnswer] = useState('')
@@ -57,6 +60,8 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
       { id: 'd', text: '' },
     ])
     setCorrectChoice('a')
+    setAllowMultipleCorrect(false)
+    setCorrectChoices([])
     setReferenceAnswer('')
     setRubric('')
     setError(null)
@@ -82,8 +87,18 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
         setLoading(false)
         return
       }
+      if (allowMultipleCorrect) {
+        if (correctChoices.length < 2) {
+          setError('Please select at least 2 correct answers for multiple-answer questions')
+          setLoading(false)
+          return
+        }
+        // Store as comma-separated values
+        questionData.correct_choice = correctChoices.join(',')
+      } else {
+        questionData.correct_choice = correctChoice
+      }
       questionData.choices = filledChoices
-      questionData.correct_choice = correctChoice
     } else {
       questionData.reference_answer = referenceAnswer || null
       questionData.rubric = rubric || null
@@ -177,33 +192,83 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
           {/* MCQ Fields */}
           {questionType === 'mcq' && (
             <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="allow-multiple"
+                  checked={allowMultipleCorrect}
+                  onCheckedChange={(checked) => {
+                    setAllowMultipleCorrect(checked === true)
+                    if (checked) {
+                      setCorrectChoices([])
+                    }
+                  }}
+                />
+                <Label htmlFor="allow-multiple" className="cursor-pointer">
+                  Allow multiple correct answers (students must select all)
+                </Label>
+              </div>
+
               <Label>Answer Choices</Label>
-              <RadioGroup
-                value={correctChoice}
-                onValueChange={setCorrectChoice}
-                className="space-y-3"
-              >
-                {choices.map((choice) => (
-                  <div key={choice.id} className="flex items-center gap-3">
-                    <RadioGroupItem
-                      value={choice.id}
-                      id={`correct-${choice.id}`}
-                    />
-                    <Label htmlFor={`correct-${choice.id}`} className="w-6">
-                      {choice.id.toUpperCase()})
-                    </Label>
-                    <Input
-                      placeholder={`Option ${choice.id.toUpperCase()}`}
-                      value={choice.text}
-                      onChange={(e) => updateChoice(choice.id, e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                ))}
-              </RadioGroup>
-              <p className="text-sm text-gray-500">
-                Select the radio button next to the correct answer
-              </p>
+              {allowMultipleCorrect ? (
+                <div className="space-y-3">
+                  {choices.map((choice) => (
+                    <div key={choice.id} className="flex items-center gap-3">
+                      <Checkbox
+                        id={`correct-${choice.id}`}
+                        checked={correctChoices.includes(choice.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setCorrectChoices([...correctChoices, choice.id])
+                          } else {
+                            setCorrectChoices(correctChoices.filter(c => c !== choice.id))
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`correct-${choice.id}`} className="w-6">
+                        {choice.id.toUpperCase()})
+                      </Label>
+                      <Input
+                        placeholder={`Option ${choice.id.toUpperCase()}`}
+                        value={choice.text}
+                        onChange={(e) => updateChoice(choice.id, e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                  ))}
+                  <p className="text-sm text-gray-500">
+                    Check all the correct answers (minimum 2)
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <RadioGroup
+                    value={correctChoice}
+                    onValueChange={setCorrectChoice}
+                    className="space-y-3"
+                  >
+                    {choices.map((choice) => (
+                      <div key={choice.id} className="flex items-center gap-3">
+                        <RadioGroupItem
+                          value={choice.id}
+                          id={`correct-${choice.id}`}
+                        />
+                        <Label htmlFor={`correct-${choice.id}`} className="w-6">
+                          {choice.id.toUpperCase()})
+                        </Label>
+                        <Input
+                          placeholder={`Option ${choice.id.toUpperCase()}`}
+                          value={choice.text}
+                          onChange={(e) => updateChoice(choice.id, e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                    ))}
+                  </RadioGroup>
+                  <p className="text-sm text-gray-500">
+                    Select the radio button next to the correct answer
+                  </p>
+                </>
+              )}
             </div>
           )}
 

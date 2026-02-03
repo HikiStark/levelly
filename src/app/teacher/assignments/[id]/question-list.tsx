@@ -65,19 +65,35 @@ export function QuestionList({ questions, assignmentId }: QuestionListProps) {
                 <p className="text-gray-900 mb-2">{question.prompt}</p>
                 {question.type === 'mcq' && question.choices && (
                   <div className="space-y-1 ml-4">
-                    {(question.choices as { id: string; text: string }[]).map((choice) => (
-                      <p
-                        key={choice.id}
-                        className={`text-sm ${
-                          choice.id === question.correct_choice
-                            ? 'text-green-600 font-medium'
-                            : 'text-gray-600'
-                        }`}
-                      >
-                        {choice.id.toUpperCase()}) {choice.text}
-                        {choice.id === question.correct_choice && ' ✓'}
-                      </p>
-                    ))}
+                    {(() => {
+                      const correctChoices = question.correct_choice?.split(',').map(c => c.trim()) || []
+                      const isMultipleCorrect = correctChoices.length > 1
+                      return (
+                        <>
+                          {isMultipleCorrect && (
+                            <p className="text-xs text-blue-600 mb-1">
+                              Multiple correct answers (select all)
+                            </p>
+                          )}
+                          {(question.choices as { id: string; text: string }[]).map((choice) => {
+                            const isCorrect = correctChoices.includes(choice.id)
+                            return (
+                              <p
+                                key={choice.id}
+                                className={`text-sm ${
+                                  isCorrect
+                                    ? 'text-green-600 font-medium'
+                                    : 'text-gray-600'
+                                }`}
+                              >
+                                {choice.id.toUpperCase()}) {choice.text}
+                                {isCorrect && ' ✓'}
+                              </p>
+                            )
+                          })}
+                        </>
+                      )
+                    })()}
                   </div>
                 )}
                 {question.type === 'open' && question.reference_answer && (

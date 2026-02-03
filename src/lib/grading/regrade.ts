@@ -101,7 +101,11 @@ interface AttemptWithAnswers {
   answer: Answer[]
 }
 
-export async function regradeAttempt(attemptId: string): Promise<{ success: boolean; error?: string }> {
+export async function regradeAttempt(attemptId: string): Promise<{
+  success: boolean
+  error?: string
+  backgroundWork?: () => Promise<void>
+}> {
   const supabase = await createClient()
 
   // Get attempt with answers
@@ -190,19 +194,20 @@ export async function regradeAttempt(attemptId: string): Promise<{ success: bool
       .eq('question_id', question.id)
   }
 
-  // If there are open questions, start background grading
+  // If there are open questions, return background work function
   if (openQuestions.length > 0) {
-    gradeOpenQuestionsForRegrade(
-      attemptId,
-      openQuestions,
-      answers,
-      mcqScore,
-      mcqTotal,
-      maxScore,
-      openTotal
-    ).catch(error => {
-      console.error(`[Regrade] Background grading failed for attempt ${attemptId}:`, error)
-    })
+    const backgroundWork = async () => {
+      await gradeOpenQuestionsForRegrade(
+        attemptId,
+        openQuestions,
+        answers,
+        mcqScore,
+        mcqTotal,
+        maxScore,
+        openTotal
+      )
+    }
+    return { success: true, backgroundWork }
   } else {
     // No open questions - finalize immediately
     const finalLevel = calculateLevel(mcqScore, maxScore)
