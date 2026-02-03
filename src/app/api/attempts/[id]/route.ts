@@ -13,7 +13,7 @@ interface AttemptWithRelations extends Attempt {
     is_correct: boolean | null
     score: number | null
     ai_feedback: string | null
-    question: { prompt: string; type: string; points: number } | null
+    question: { prompt: string; type: string; points: number; order_index: number } | null
   }>
 }
 
@@ -32,7 +32,7 @@ export async function GET(
         assignment(title),
         answer(
           *,
-          question(prompt, type, points)
+          question(prompt, type, points, order_index)
         )
       `)
       .eq('id', id)

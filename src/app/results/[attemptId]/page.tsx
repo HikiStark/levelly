@@ -35,6 +35,7 @@ interface AttemptData {
       prompt: string
       type: string
       points: number
+      order_index: number
     }
   }[]
 }
@@ -213,7 +214,9 @@ export default function ResultsPage({
               <CardTitle className="text-lg">Question Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {attempt.answer.map((ans, index) => (
+              {[...attempt.answer]
+                .sort((a, b) => (a.question?.order_index ?? 0) - (b.question?.order_index ?? 0))
+                .map((ans, index) => (
                 <div
                   key={ans.id}
                   className="p-4 border rounded-md space-y-2"
