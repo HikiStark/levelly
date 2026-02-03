@@ -164,7 +164,7 @@ STUDENT'S ANSWER: ${trimmedAnswer}`
 const MAX_RETRIES = 2
 const RETRY_DELAY_MS = 1000
 
-async function gradeWithRetry(
+export async function gradeWithRetry(
   question: Question,
   studentAnswer: string,
   retries = MAX_RETRIES

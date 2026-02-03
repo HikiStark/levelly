@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { gradeMCQ } from '@/lib/grading/mcq'
-import { gradeOpenAnswer } from '@/lib/grading/open-answer'
+import { gradeWithRetry } from '@/lib/grading/open-answer'
 import { calculateLevel } from '@/lib/grading/level-calculator'
 import { Database } from '@/lib/supabase/types'
 
@@ -124,11 +124,16 @@ export async function POST(request: NextRequest) {
         const answerText = answer?.answerText || ''
 
         try {
-          const result = await gradeOpenAnswer(question, answerText)
+          // Add delay between requests to avoid rate limiting
+          if (gradedCount > 0) {
+            await new Promise(resolve => setTimeout(resolve, 500))
+          }
+          const result = await gradeWithRetry(question, answerText)
 
           // Update the answer with AI grading
           await supabase
             .from('answer')
+            // @ts-expect-error - Supabase types mismatch
             .update({
               score: result.score,
               ai_feedback: result.feedback,
