@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const openQuestions = questions.filter((q) => q.type === 'open')
 
     // Create attempt with grading status
-    const attemptInsert: AttemptInsert = {
+    const attemptInsert = {
       assignment_id: assignmentId,
       share_link_id: shareLinkId,
       student_name: studentName,
@@ -52,16 +52,19 @@ export async function POST(request: NextRequest) {
       submitted_at: new Date().toISOString(),
       grading_progress: 0,
       grading_total: openQuestions.length,
-    }
+    } satisfies AttemptInsert
+
     const { data: attempt, error: attemptError } = await supabase
       .from('attempt')
-      .insert(attemptInsert as never)
+      // @ts-expect-error - Supabase types mismatch with generated schema
+      .insert(attemptInsert)
       .select()
       .single()
 
     if (attemptError || !attempt) {
+      console.error('Failed to create attempt:', attemptError)
       return NextResponse.json(
-        { error: 'Failed to create attempt' },
+        { error: 'Failed to create attempt', details: attemptError?.message },
         { status: 500 }
       )
     }
