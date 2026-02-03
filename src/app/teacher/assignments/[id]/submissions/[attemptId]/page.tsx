@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getLevelDisplayName, getLevelColor, Level } from '@/lib/grading/level-calculator'
+import { SubmissionActions } from './submission-actions'
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return '-'
@@ -65,9 +66,12 @@ export default async function SubmissionDetailPage({
           <h1 className="text-2xl font-bold text-gray-900">Student Submission</h1>
           <p className="text-gray-600">{assignment.title}</p>
         </div>
-        <Link href={`/teacher/assignments/${id}/submissions`}>
-          <Button variant="outline">Back to Submissions</Button>
-        </Link>
+        <div className="flex items-center gap-4">
+          <SubmissionActions attemptId={attemptId} assignmentId={id} />
+          <Link href={`/teacher/assignments/${id}/submissions`}>
+            <Button variant="outline">Back to Submissions</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Student Info & Summary */}

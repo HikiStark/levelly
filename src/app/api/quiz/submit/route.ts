@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { gradeMCQ } from '@/lib/grading/mcq'
 import { gradeWithRetry } from '@/lib/grading/open-answer'
@@ -162,6 +163,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Extract attempt ID (type assertion due to Supabase types mismatch)
+    const attemptId = (attempt as { id: string }).id
+
     // Grade MCQ answers immediately (fast, no API calls)
     let mcqScore = 0
     let mcqTotal = 0
@@ -182,7 +186,7 @@ export async function POST(request: NextRequest) {
         mcqTotal += result.maxScore
 
         answerInserts.push({
-          attempt_id: attempt.id,
+          attempt_id: attemptId,
           question_id: question.id,
           selected_choice: answer?.selectedChoice ?? null,
           is_correct: result.isCorrect,
@@ -190,7 +194,7 @@ export async function POST(request: NextRequest) {
         })
       } else {
         answerInserts.push({
-          attempt_id: attempt.id,
+          attempt_id: attemptId,
           question_id: question.id,
           answer_text: answer?.answerText ?? null,
           score: null, // Will be filled by background grading
@@ -210,22 +214,26 @@ export async function POST(request: NextRequest) {
 
     // If there are open questions, start background grading
     if (openQuestions.length > 0) {
-      // Fire and forget - don't await this
-      gradeOpenQuestionsInBackground(
-        attempt.id,
-        openQuestions as Question[],
-        answers,
-        mcqScore,
-        mcqTotal,
-        maxScore,
-        openTotal
-      ).catch(error => {
-        console.error(`[Grading] Background grading failed for attempt ${attempt.id}:`, error)
+      // Use after() to run grading after response is sent while keeping function alive
+      after(async () => {
+        try {
+          await gradeOpenQuestionsInBackground(
+            attemptId,
+            openQuestions as Question[],
+            answers,
+            mcqScore,
+            mcqTotal,
+            maxScore,
+            openTotal
+          )
+        } catch (error) {
+          console.error(`[Grading] Background grading failed for attempt ${attemptId}:`, error)
+        }
       })
 
       // Return immediately - student goes to results page to wait
       return NextResponse.json({
-        attemptId: attempt.id,
+        attemptId,
         status: 'grading',
         isFinal: false,
       })
@@ -248,10 +256,10 @@ export async function POST(request: NextRequest) {
         status: 'graded',
         is_final: true,
       })
-      .eq('id', attempt.id)
+      .eq('id', attemptId)
 
     return NextResponse.json({
-      attemptId: attempt.id,
+      attemptId,
       level: finalLevel,
       status: 'graded',
       isFinal: true,
