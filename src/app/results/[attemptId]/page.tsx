@@ -18,6 +18,8 @@ interface AttemptData {
   max_score: number
   level: string
   is_final: boolean
+  grading_progress: number | null
+  grading_total: number | null
   assignment: {
     title: string
   }

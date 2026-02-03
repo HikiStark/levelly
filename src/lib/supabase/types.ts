@@ -132,7 +132,7 @@ export interface Database {
           share_link_id: string | null
           student_name: string | null
           student_email: string | null
-          status: 'in_progress' | 'submitted' | 'graded'
+          status: 'in_progress' | 'submitted' | 'grading' | 'graded'
           started_at: string
           submitted_at: string | null
           mcq_score: number
@@ -143,6 +143,8 @@ export interface Database {
           max_score: number
           level: string | null
           is_final: boolean
+          grading_progress: number | null
+          grading_total: number | null
         }
         Insert: {
           id?: string
@@ -150,7 +152,7 @@ export interface Database {
           share_link_id?: string | null
           student_name?: string | null
           student_email?: string | null
-          status?: 'in_progress' | 'submitted' | 'graded'
+          status?: 'in_progress' | 'submitted' | 'grading' | 'graded'
           started_at?: string
           submitted_at?: string | null
           mcq_score?: number
@@ -161,6 +163,8 @@ export interface Database {
           max_score?: number
           level?: string | null
           is_final?: boolean
+          grading_progress?: number | null
+          grading_total?: number | null
         }
         Update: {
           id?: string
@@ -168,7 +172,7 @@ export interface Database {
           share_link_id?: string | null
           student_name?: string | null
           student_email?: string | null
-          status?: 'in_progress' | 'submitted' | 'graded'
+          status?: 'in_progress' | 'submitted' | 'grading' | 'graded'
           started_at?: string
           submitted_at?: string | null
           mcq_score?: number
@@ -179,6 +183,8 @@ export interface Database {
           max_score?: number
           level?: string | null
           is_final?: boolean
+          grading_progress?: number | null
+          grading_total?: number | null
         }
       }
       answer: {

@@ -36,13 +36,14 @@ export async function gradeOpenAnswer(
     }
   }
 
-  const systemPrompt = `You are an intelligent grading assistant that evaluates student answers based on MEANING and UNDERSTANDING, not exact wording.
+  const systemPrompt = `You are an intelligent grading assistant that evaluates student answers based on MEANING and UNDERSTANDING, not only on exact wording.
 
 Your task:
 1. First, understand what the question is asking
 2. Understand what the student's answer means and what they are trying to convey
 3. Compare the SEMANTIC MEANING of the student's answer to the expected answer
-4. Grade based on how well the student demonstrated understanding of the concept
+4. Check for the correctness of the student's answer based on the online trusted sources if available and if expected answer is not provided, use your own knowledge to grade the answer.
+5. Grade based on how well the student demonstrated understanding of the concept
 
 IMPORTANT GRADING PRINCIPLES:
 - Answers do NOT need to match word-for-word with the reference answer
@@ -74,7 +75,7 @@ STUDENT'S ANSWER: ${trimmedAnswer}`
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-5-mini',
+      model: process.env.OPENAI_MODEL || 'gpt-5-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
