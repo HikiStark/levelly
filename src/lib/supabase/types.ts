@@ -6,6 +6,38 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Question type enum
+export type QuestionType = 'mcq' | 'open' | 'slider' | 'image_map'
+
+// Slider configuration for slider questions
+export interface SliderConfig {
+  min: number
+  max: number
+  step: number
+  correct_value: number
+  tolerance: number // Answer is correct if within +/- tolerance
+}
+
+// Image map flag configuration
+export interface ImageMapFlag {
+  id: string
+  x: number // 0-1 relative to image width
+  y: number // 0-1 relative to image height
+  label: string
+  answer_type: 'text' | 'mcq' | 'slider'
+  correct_answer: string
+  choices?: { id: string; text: string }[] // For MCQ flags
+  slider_config?: SliderConfig // For slider flags
+  reference_answer?: string // For text flags (AI grading)
+  points: number
+}
+
+// Image map configuration for image-map questions
+export interface ImageMapConfig {
+  base_image_url: string
+  flags: ImageMapFlag[]
+}
+
 // Questionnaire question options types
 export type QuestionnaireQuestionOptions =
   | { id: string; text: string }[] // MCQ options
@@ -67,7 +99,7 @@ export interface Database {
         Row: {
           id: string
           assignment_id: string
-          type: 'mcq' | 'open'
+          type: QuestionType
           prompt: string
           choices: { id: string; text: string }[] | null
           correct_choice: string | null
@@ -76,11 +108,14 @@ export interface Database {
           points: number
           order_index: number
           created_at: string
+          image_url: string | null
+          slider_config: SliderConfig | null
+          image_map_config: ImageMapConfig | null
         }
         Insert: {
           id?: string
           assignment_id: string
-          type: 'mcq' | 'open'
+          type: QuestionType
           prompt: string
           choices?: { id: string; text: string }[] | null
           correct_choice?: string | null
@@ -89,11 +124,14 @@ export interface Database {
           points?: number
           order_index: number
           created_at?: string
+          image_url?: string | null
+          slider_config?: SliderConfig | null
+          image_map_config?: ImageMapConfig | null
         }
         Update: {
           id?: string
           assignment_id?: string
-          type?: 'mcq' | 'open'
+          type?: QuestionType
           prompt?: string
           choices?: { id: string; text: string }[] | null
           correct_choice?: string | null
@@ -102,6 +140,9 @@ export interface Database {
           points?: number
           order_index?: number
           created_at?: string
+          image_url?: string | null
+          slider_config?: SliderConfig | null
+          image_map_config?: ImageMapConfig | null
         }
       }
       share_link: {
@@ -204,6 +245,8 @@ export interface Database {
           ai_feedback: string | null
           ai_graded_at: string | null
           submitted_at: string
+          slider_value: number | null
+          image_map_answers: Record<string, string> | null
         }
         Insert: {
           id?: string
@@ -216,6 +259,8 @@ export interface Database {
           ai_feedback?: string | null
           ai_graded_at?: string | null
           submitted_at?: string
+          slider_value?: number | null
+          image_map_answers?: Record<string, string> | null
         }
         Update: {
           id?: string
@@ -228,6 +273,8 @@ export interface Database {
           ai_feedback?: string | null
           ai_graded_at?: string | null
           submitted_at?: string
+          slider_value?: number | null
+          image_map_answers?: Record<string, string> | null
         }
       }
       level_redirect: {

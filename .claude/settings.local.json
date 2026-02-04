@@ -5,7 +5,9 @@
       "Bash(npx shadcn@latest add:*)",
       "Bash(test:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(findstr:*)",
+      "Bash(dir:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\hikir\\Documents\\DEV\\levelly"

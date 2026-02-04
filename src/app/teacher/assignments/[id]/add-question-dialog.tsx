@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Slider } from '@/components/ui/slider'
+import { ImageUpload } from '@/components/ui/image-upload'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { QuestionType, SliderConfig } from '@/lib/supabase/types'
 
 interface AddQuestionDialogProps {
   assignmentId: string
@@ -25,9 +28,10 @@ interface AddQuestionDialogProps {
 
 export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionDialogProps) {
   const [open, setOpen] = useState(false)
-  const [questionType, setQuestionType] = useState<'mcq' | 'open'>('mcq')
+  const [questionType, setQuestionType] = useState<QuestionType>('mcq')
   const [prompt, setPrompt] = useState('')
   const [points, setPoints] = useState(1)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
 
   // MCQ fields
   const [choices, setChoices] = useState([
@@ -44,6 +48,13 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
   const [referenceAnswer, setReferenceAnswer] = useState('')
   const [rubric, setRubric] = useState('')
 
+  // Slider fields
+  const [sliderMin, setSliderMin] = useState(0)
+  const [sliderMax, setSliderMax] = useState(100)
+  const [sliderStep, setSliderStep] = useState(1)
+  const [sliderCorrectValue, setSliderCorrectValue] = useState(50)
+  const [sliderTolerance, setSliderTolerance] = useState(5)
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -53,6 +64,7 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
     setQuestionType('mcq')
     setPrompt('')
     setPoints(1)
+    setImageUrl(null)
     setChoices([
       { id: 'a', text: '' },
       { id: 'b', text: '' },
@@ -64,6 +76,12 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
     setCorrectChoices([])
     setReferenceAnswer('')
     setRubric('')
+    // Reset slider fields
+    setSliderMin(0)
+    setSliderMax(100)
+    setSliderStep(1)
+    setSliderCorrectValue(50)
+    setSliderTolerance(5)
     setError(null)
   }
 
@@ -78,6 +96,7 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
       prompt,
       points,
       order_index: nextOrderIndex,
+      image_url: imageUrl,
     }
 
     if (questionType === 'mcq') {
@@ -99,10 +118,37 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
         questionData.correct_choice = correctChoice
       }
       questionData.choices = filledChoices
-    } else {
+    } else if (questionType === 'open') {
       questionData.reference_answer = referenceAnswer || null
       questionData.rubric = rubric || null
+    } else if (questionType === 'slider') {
+      // Validate slider config
+      if (sliderMin >= sliderMax) {
+        setError('Maximum value must be greater than minimum value')
+        setLoading(false)
+        return
+      }
+      if (sliderCorrectValue < sliderMin || sliderCorrectValue > sliderMax) {
+        setError('Correct value must be between min and max')
+        setLoading(false)
+        return
+      }
+      if (sliderTolerance < 0) {
+        setError('Tolerance must be 0 or greater')
+        setLoading(false)
+        return
+      }
+
+      const sliderConfig: SliderConfig = {
+        min: sliderMin,
+        max: sliderMax,
+        step: sliderStep,
+        correct_value: sliderCorrectValue,
+        tolerance: sliderTolerance,
+      }
+      questionData.slider_config = sliderConfig
     }
+    // Note: image_map type will be handled by the ImageMapEditor component
 
     const { error: insertError } = await supabase
       .from('question')
@@ -148,8 +194,8 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
             <Label>Question Type</Label>
             <RadioGroup
               value={questionType}
-              onValueChange={(v) => setQuestionType(v as 'mcq' | 'open')}
-              className="flex gap-4"
+              onValueChange={(v) => setQuestionType(v as QuestionType)}
+              className="flex flex-wrap gap-4"
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="mcq" id="mcq" />
@@ -158,6 +204,14 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="open" id="open" />
                 <Label htmlFor="open" className="cursor-pointer">Open-ended</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="slider" id="slider" />
+                <Label htmlFor="slider" className="cursor-pointer">Slider</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="image_map" id="image_map" />
+                <Label htmlFor="image_map" className="cursor-pointer">Image Map</Label>
               </div>
             </RadioGroup>
           </div>
@@ -298,6 +352,107 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
                   rows={2}
                 />
               </div>
+            </div>
+          )}
+
+          {/* Slider Fields */}
+          {questionType === 'slider' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sliderMin">Minimum Value</Label>
+                  <Input
+                    id="sliderMin"
+                    type="number"
+                    value={sliderMin}
+                    onChange={(e) => setSliderMin(parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sliderMax">Maximum Value</Label>
+                  <Input
+                    id="sliderMax"
+                    type="number"
+                    value={sliderMax}
+                    onChange={(e) => setSliderMax(parseFloat(e.target.value) || 100)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sliderStep">Step</Label>
+                  <Input
+                    id="sliderStep"
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    value={sliderStep}
+                    onChange={(e) => setSliderStep(parseFloat(e.target.value) || 1)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sliderTolerance">Tolerance (±)</Label>
+                  <Input
+                    id="sliderTolerance"
+                    type="number"
+                    min={0}
+                    value={sliderTolerance}
+                    onChange={(e) => setSliderTolerance(parseFloat(e.target.value) || 0)}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Answer is correct if within ± this value
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sliderCorrect">Correct Value</Label>
+                <Input
+                  id="sliderCorrect"
+                  type="number"
+                  value={sliderCorrectValue}
+                  onChange={(e) => setSliderCorrectValue(parseFloat(e.target.value) || 0)}
+                />
+              </div>
+              {/* Preview */}
+              <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
+                <Label>Preview</Label>
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>{sliderMin}</span>
+                  <span className="font-medium">{sliderCorrectValue}</span>
+                  <span>{sliderMax}</span>
+                </div>
+                <Slider
+                  min={sliderMin}
+                  max={sliderMax}
+                  step={sliderStep}
+                  value={[sliderCorrectValue]}
+                  onValueChange={(v) => setSliderCorrectValue(v[0])}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Image Map Note */}
+          {questionType === 'image_map' && (
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                Image Map questions require a dedicated editor. After creating the question,
+                you&apos;ll be able to upload an image and place interactive flags on it.
+              </p>
+            </div>
+          )}
+
+          {/* Optional Image Upload (for mcq, open, slider) */}
+          {(questionType === 'mcq' || questionType === 'open' || questionType === 'slider') && (
+            <div className="space-y-2">
+              <Label>Question Image (optional)</Label>
+              <ImageUpload
+                value={imageUrl}
+                onChange={setImageUrl}
+              />
+              <p className="text-sm text-gray-500">
+                Add an image to help illustrate the question
+              </p>
             </div>
           )}
 

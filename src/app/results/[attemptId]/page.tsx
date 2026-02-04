@@ -51,6 +51,8 @@ interface AttemptData {
     question_id: string
     selected_choice: string | null
     answer_text: string | null
+    slider_value: number | null
+    image_map_answers: Record<string, string> | null
     is_correct: boolean | null
     score: number | null
     ai_feedback: string | null
@@ -59,6 +61,9 @@ interface AttemptData {
       type: string
       points: number
       order_index: number
+      slider_config: { min: number; max: number; correct_value: number; tolerance: number } | null
+      image_map_config: { base_image_url: string; flags: { id: string; label: string; answer_type: string; points: number }[] } | null
+      image_url: string | null
     }
   }[]
 }
@@ -261,6 +266,15 @@ export default function ResultsPage({
                   key={ans.id}
                   className="p-4 border rounded-md space-y-2"
                 >
+                  {/* Question Image (if present) */}
+                  {ans.question?.image_url && ans.question?.type !== 'image_map' && (
+                    <img
+                      src={ans.question.image_url}
+                      alt="Question image"
+                      className="max-w-full h-auto rounded-lg mb-2"
+                    />
+                  )}
+
                   <div className="flex justify-between items-start">
                     <p className="font-medium text-sm">
                       Q{index + 1}: {ans.question?.prompt}
@@ -277,12 +291,60 @@ export default function ResultsPage({
                       {ans.score ?? 0}/{ans.question?.points}
                     </Badge>
                   </div>
-                  {ans.question?.type === 'mcq' ? (
+
+                  {/* MCQ Answer */}
+                  {ans.question?.type === 'mcq' && (
                     <p className="text-sm text-gray-600">
                       Your answer: {ans.selected_choice?.toUpperCase() || 'Not answered'}
                       {ans.is_correct ? ' ✓' : ' ✗'}
                     </p>
-                  ) : (
+                  )}
+
+                  {/* Slider Answer */}
+                  {ans.question?.type === 'slider' && (
+                    <div className="text-sm text-gray-600">
+                      <p>
+                        Your answer: {ans.slider_value ?? 'Not answered'}
+                        {ans.is_correct ? ' ✓' : ' ✗'}
+                      </p>
+                      {ans.question.slider_config && (
+                        <p className="text-xs text-gray-400">
+                          Correct: {ans.question.slider_config.correct_value}
+                          {ans.question.slider_config.tolerance > 0 &&
+                            ` (±${ans.question.slider_config.tolerance})`}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Image Map Answer */}
+                  {ans.question?.type === 'image_map' && ans.question.image_map_config && (
+                    <div className="space-y-2">
+                      <img
+                        src={ans.question.image_map_config.base_image_url}
+                        alt="Question image"
+                        className="max-w-full h-auto rounded-lg"
+                      />
+                      <div className="text-sm text-gray-600 space-y-1">
+                        {ans.question.image_map_config.flags.map((flag) => (
+                          <div key={flag.id} className="flex justify-between">
+                            <span>{flag.label}:</span>
+                            <span>
+                              {ans.image_map_answers?.[flag.id] || 'Not answered'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      {ans.ai_feedback && (
+                        <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded whitespace-pre-line">
+                          Feedback: {ans.ai_feedback}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Open Answer */}
+                  {ans.question?.type === 'open' && (
                     <>
                       <p className="text-sm text-gray-600">
                         Your answer: {ans.answer_text || 'Not answered'}

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { QuestionList } from './question-list'
 import { AddQuestionDialog } from './add-question-dialog'
+import { ImageMapEditor } from './image-map-editor'
 import { ShareLinkSection } from './share-link-section'
 import { LevelRedirectSection } from './level-redirect-section'
 import { PublishButton } from './publish-button'
@@ -94,13 +95,19 @@ export default async function AssignmentPage({
           <div>
             <CardTitle>Questions</CardTitle>
             <CardDescription>
-              Add MCQ and open-ended questions to your quiz
+              Add MCQ, open-ended, slider, or image map questions
             </CardDescription>
           </div>
-          <AddQuestionDialog
-            assignmentId={id}
-            nextOrderIndex={(questions?.length || 0) + 1}
-          />
+          <div className="flex gap-2">
+            <AddQuestionDialog
+              assignmentId={id}
+              nextOrderIndex={(questions?.length || 0) + 1}
+            />
+            <ImageMapEditor
+              assignmentId={id}
+              nextOrderIndex={(questions?.length || 0) + 1}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <QuestionList questions={questions || []} assignmentId={id} />

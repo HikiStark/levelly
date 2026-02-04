@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MCQQuestion } from './mcq-question'
 import { OpenQuestion } from './open-question'
+import { SliderQuestion } from './slider-question'
+import { ImageMapQuestion } from './image-map-question'
 
 interface QuizContainerProps {
   assignment: {
@@ -24,6 +26,8 @@ interface AnswerState {
   [questionId: string]: {
     selectedChoice?: string
     answerText?: string
+    sliderValue?: number
+    imageMapAnswers?: Record<string, string>
   }
 }
 
@@ -50,6 +54,24 @@ export function QuizContainer({ assignment, questions, shareLinkId }: QuizContai
     })
   }
 
+  const handleSliderChange = (questionId: string, value: number) => {
+    setAnswers({
+      ...answers,
+      [questionId]: { ...answers[questionId], sliderValue: value },
+    })
+  }
+
+  const handleImageMapChange = (questionId: string, flagId: string, answer: string) => {
+    const currentImageMapAnswers = answers[questionId]?.imageMapAnswers || {}
+    setAnswers({
+      ...answers,
+      [questionId]: {
+        ...answers[questionId],
+        imageMapAnswers: { ...currentImageMapAnswers, [flagId]: answer },
+      },
+    })
+  }
+
   const handleSubmit = async () => {
     setSubmitting(true)
     setError(null)
@@ -67,6 +89,8 @@ export function QuizContainer({ assignment, questions, shareLinkId }: QuizContai
             questionId,
             selectedChoice: answer.selectedChoice || null,
             answerText: answer.answerText || null,
+            sliderValue: answer.sliderValue ?? null,
+            imageMapAnswers: answer.imageMapAnswers || null,
           })),
         }),
       })
@@ -84,9 +108,16 @@ export function QuizContainer({ assignment, questions, shareLinkId }: QuizContai
     }
   }
 
-  const answeredCount = Object.keys(answers).filter(
-    (qId) => answers[qId].selectedChoice || answers[qId].answerText
-  ).length
+  const isAnswered = (answer: AnswerState[string] | undefined) => {
+    if (!answer) return false
+    if (answer.selectedChoice) return true
+    if (answer.answerText) return true
+    if (answer.sliderValue !== undefined) return true
+    if (answer.imageMapAnswers && Object.keys(answer.imageMapAnswers).length > 0) return true
+    return false
+  }
+
+  const answeredCount = Object.keys(answers).filter((qId) => isAnswered(answers[qId])).length
 
   if (!started) {
     return (
@@ -162,17 +193,48 @@ export function QuizContainer({ assignment, questions, shareLinkId }: QuizContai
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {question.type === 'mcq' ? (
+                {/* Show question image if present (for mcq, open, slider) */}
+                {question.image_url && question.type !== 'image_map' && (
+                  <div className="mb-4">
+                    <img
+                      src={question.image_url}
+                      alt="Question image"
+                      className="max-w-full h-auto rounded-lg"
+                    />
+                  </div>
+                )}
+
+                {question.type === 'mcq' && (
                   <MCQQuestion
                     question={question}
                     selectedChoice={answers[question.id]?.selectedChoice}
                     onSelect={(choiceId) => handleMCQSelect(question.id, choiceId)}
                   />
-                ) : (
+                )}
+
+                {question.type === 'open' && (
                   <OpenQuestion
                     question={question}
                     answer={answers[question.id]?.answerText || ''}
                     onChange={(text) => handleOpenChange(question.id, text)}
+                  />
+                )}
+
+                {question.type === 'slider' && (
+                  <SliderQuestion
+                    question={question}
+                    value={answers[question.id]?.sliderValue}
+                    onChange={(value) => handleSliderChange(question.id, value)}
+                  />
+                )}
+
+                {question.type === 'image_map' && (
+                  <ImageMapQuestion
+                    question={question}
+                    answers={answers[question.id]?.imageMapAnswers || {}}
+                    onAnswerChange={(flagId, answer) =>
+                      handleImageMapChange(question.id, flagId, answer)
+                    }
                   />
                 )}
               </CardContent>

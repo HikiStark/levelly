@@ -3,6 +3,8 @@ import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { gradeMCQ } from '@/lib/grading/mcq'
 import { gradeWithRetry } from '@/lib/grading/open-answer'
+import { gradeSlider } from '@/lib/grading/slider'
+import { gradeImageMapImmediate, gradeImageMapTextFlags } from '@/lib/grading/image-map'
 import { calculateLevel } from '@/lib/grading/level-calculator'
 import { Database, Question } from '@/lib/supabase/types'
 
@@ -17,50 +19,83 @@ interface SubmitRequest {
     questionId: string
     selectedChoice: string | null
     answerText: string | null
+    sliderValue: number | null
+    imageMapAnswers: Record<string, string> | null
   }[]
 }
 
 // Background grading function - runs without blocking the response
-async function gradeOpenQuestionsInBackground(
+async function gradeQuestionsInBackground(
   attemptId: string,
-  openQuestions: Question[],
-  answers: SubmitRequest['answers'],
-  mcqScore: number,
-  mcqTotal: number,
+  questionsToGrade: { question: Question; answer: SubmitRequest['answers'][0] }[],
+  immediateScore: number,
+  immediateTotal: number,
   maxScore: number,
-  openTotal: number
+  pendingTotal: number
 ) {
   // Create a new Supabase client for background processing
   const supabase = await createClient()
-  let openScore = 0
+  let pendingScore = 0
   let gradedCount = 0
 
-  for (const question of openQuestions) {
-    const answer = answers.find((a) => a.questionId === question.id)
-    const answerText = answer?.answerText || ''
-
+  for (const { question, answer } of questionsToGrade) {
     try {
       // Add delay between requests to avoid rate limiting
       if (gradedCount > 0) {
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
 
-      const result = await gradeWithRetry(question, answerText)
+      if (question.type === 'open') {
+        // Grade open-ended question with AI
+        const answerText = answer?.answerText || ''
+        const result = await gradeWithRetry(question, answerText)
 
-      // Update the answer with AI grading
-      await supabase
-        .from('answer')
-        // @ts-expect-error - Supabase types mismatch
-        .update({
-          score: result.score,
-          ai_feedback: result.feedback,
-          ai_graded_at: new Date().toISOString(),
-        })
-        .eq('attempt_id', attemptId)
-        .eq('question_id', question.id)
+        await supabase
+          .from('answer')
+          // @ts-expect-error - Supabase types mismatch
+          .update({
+            score: result.score,
+            ai_feedback: result.feedback,
+            ai_graded_at: new Date().toISOString(),
+          })
+          .eq('attempt_id', attemptId)
+          .eq('question_id', question.id)
+
+        pendingScore += result.score
+      } else if (question.type === 'image_map') {
+        // Grade image-map text flags with AI
+        const imageMapAnswers = answer?.imageMapAnswers || null
+        const textFlagResults = await gradeImageMapTextFlags(question, imageMapAnswers)
+
+        // Sum up text flag scores
+        const textFlagScore = textFlagResults.reduce((sum, r) => sum + r.score, 0)
+        const feedback = textFlagResults.map(r => `${r.flagLabel}: ${r.feedback}`).join('\n')
+
+        // Get current answer to add to existing score
+        const { data: currentAnswer } = await supabase
+          .from('answer')
+          .select('score')
+          .eq('attempt_id', attemptId)
+          .eq('question_id', question.id)
+          .single()
+
+        const existingScore = (currentAnswer as { score: number | null } | null)?.score || 0
+
+        await supabase
+          .from('answer')
+          // @ts-expect-error - Supabase types mismatch
+          .update({
+            score: existingScore + textFlagScore,
+            ai_feedback: feedback,
+            ai_graded_at: new Date().toISOString(),
+          })
+          .eq('attempt_id', attemptId)
+          .eq('question_id', question.id)
+
+        pendingScore += textFlagScore
+      }
 
       gradedCount++
-      openScore += result.score
 
       // Update progress
       await supabase
@@ -68,7 +103,7 @@ async function gradeOpenQuestionsInBackground(
         // @ts-expect-error - Supabase types mismatch
         .update({
           grading_progress: gradedCount,
-          open_score: openScore,
+          open_score: pendingScore,
         })
         .eq('id', attemptId)
 
@@ -88,7 +123,7 @@ async function gradeOpenQuestionsInBackground(
   }
 
   // Calculate final results
-  const totalScore = mcqScore + openScore
+  const totalScore = immediateScore + pendingScore
   const finalLevel = calculateLevel(totalScore, maxScore)
 
   // Update attempt with final results
@@ -96,16 +131,16 @@ async function gradeOpenQuestionsInBackground(
     .from('attempt')
     // @ts-expect-error - Supabase types mismatch
     .update({
-      mcq_score: mcqScore,
-      mcq_total: mcqTotal,
-      open_score: openScore,
-      open_total: openTotal,
+      mcq_score: immediateTotal,
+      mcq_total: immediateTotal,
+      open_score: pendingScore,
+      open_total: pendingTotal,
       total_score: totalScore,
       max_score: maxScore,
       level: finalLevel,
       status: 'graded',
       is_final: true,
-      grading_progress: openQuestions.length,
+      grading_progress: questionsToGrade.length,
     })
     .eq('id', attemptId)
 
@@ -134,7 +169,15 @@ export async function POST(request: NextRequest) {
 
     // Cast to proper type (Supabase types mismatch workaround)
     const typedQuestions = questions as unknown as Question[]
+
+    // Find questions that need background AI grading
     const openQuestions = typedQuestions.filter((q) => q.type === 'open')
+    const imageMapQuestionsWithText = typedQuestions.filter((q) => {
+      if (q.type !== 'image_map' || !q.image_map_config) return false
+      const config = q.image_map_config as { flags: { answer_type: string }[] }
+      return config.flags.some(f => f.answer_type === 'text')
+    })
+    const questionsNeedingAIGrading = [...openQuestions, ...imageMapQuestionsWithText]
 
     // Create attempt with grading status
     const attemptInsert = {
@@ -142,10 +185,10 @@ export async function POST(request: NextRequest) {
       share_link_id: shareLinkId,
       student_name: studentName,
       student_email: studentEmail,
-      status: openQuestions.length > 0 ? 'grading' : 'graded',
+      status: questionsNeedingAIGrading.length > 0 ? 'grading' : 'graded',
       submitted_at: new Date().toISOString(),
       grading_progress: 0,
-      grading_total: openQuestions.length,
+      grading_total: questionsNeedingAIGrading.length,
     } satisfies AttemptInsert
 
     const { data: attempt, error: attemptError } = await supabase
@@ -166,13 +209,21 @@ export async function POST(request: NextRequest) {
     // Extract attempt ID (type assertion due to Supabase types mismatch)
     const attemptId = (attempt as { id: string }).id
 
-    // Grade MCQ answers immediately (fast, no API calls)
-    let mcqScore = 0
-    let mcqTotal = 0
+    // Grade deterministic answers immediately (MCQ, slider, image-map MCQ/slider flags)
+    let immediateScore = 0
+    let immediateTotal = 0
 
     // Calculate max scores
     const maxScore = typedQuestions.reduce((sum, q) => sum + q.points, 0)
-    const openTotal = openQuestions.reduce((sum, q) => sum + q.points, 0)
+
+    // Calculate pending total (open questions + image-map text flags)
+    let pendingTotal = openQuestions.reduce((sum, q) => sum + q.points, 0)
+    for (const q of imageMapQuestionsWithText) {
+      const config = q.image_map_config as { flags: { answer_type: string; points: number }[] }
+      pendingTotal += config.flags
+        .filter(f => f.answer_type === 'text')
+        .reduce((sum, f) => sum + f.points, 0)
+    }
 
     // Process and save answers
     const answerInserts = []
@@ -182,8 +233,8 @@ export async function POST(request: NextRequest) {
 
       if (question.type === 'mcq') {
         const result = gradeMCQ(question, answer?.selectedChoice ?? null)
-        mcqScore += result.score
-        mcqTotal += result.maxScore
+        immediateScore += result.score
+        immediateTotal += result.maxScore
 
         answerInserts.push({
           attempt_id: attemptId,
@@ -192,7 +243,35 @@ export async function POST(request: NextRequest) {
           is_correct: result.isCorrect,
           score: result.score,
         })
+      } else if (question.type === 'slider') {
+        const result = gradeSlider(question, answer?.sliderValue ?? null)
+        immediateScore += result.score
+        immediateTotal += result.maxScore
+
+        answerInserts.push({
+          attempt_id: attemptId,
+          question_id: question.id,
+          slider_value: answer?.sliderValue ?? null,
+          is_correct: result.isCorrect,
+          score: result.score,
+        })
+      } else if (question.type === 'image_map') {
+        const imageMapAnswers = answer?.imageMapAnswers ?? null
+        const result = gradeImageMapImmediate(question, imageMapAnswers)
+
+        // Immediate score from MCQ and slider flags
+        immediateScore += result.immediateScore
+        immediateTotal += result.immediateMaxScore
+
+        answerInserts.push({
+          attempt_id: attemptId,
+          question_id: question.id,
+          image_map_answers: imageMapAnswers,
+          is_correct: result.immediateScore === result.immediateMaxScore && result.pendingMaxScore === 0,
+          score: result.immediateScore, // Text flags will be added by background grading
+        })
       } else {
+        // Open question - will be graded in background
         answerInserts.push({
           attempt_id: attemptId,
           question_id: question.id,
@@ -212,19 +291,24 @@ export async function POST(request: NextRequest) {
       console.error('Error inserting answers:', answersError)
     }
 
-    // If there are open questions, start background grading
-    if (openQuestions.length > 0) {
+    // If there are questions needing AI grading, start background grading
+    if (questionsNeedingAIGrading.length > 0) {
+      // Prepare questions with their answers for background grading
+      const questionsToGrade = questionsNeedingAIGrading.map(q => ({
+        question: q,
+        answer: answers.find(a => a.questionId === q.id)!,
+      }))
+
       // Use after() to run grading after response is sent while keeping function alive
       after(async () => {
         try {
-          await gradeOpenQuestionsInBackground(
+          await gradeQuestionsInBackground(
             attemptId,
-            openQuestions as Question[],
-            answers,
-            mcqScore,
-            mcqTotal,
+            questionsToGrade,
+            immediateScore,
+            immediateTotal,
             maxScore,
-            openTotal
+            pendingTotal
           )
         } catch (error) {
           console.error(`[Grading] Background grading failed for attempt ${attemptId}:`, error)
@@ -239,18 +323,18 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // No open questions - finalize immediately
-    const finalLevel = calculateLevel(mcqScore, maxScore)
+    // No AI grading needed - finalize immediately
+    const finalLevel = calculateLevel(immediateScore, maxScore)
 
     await supabase
       .from('attempt')
       // @ts-expect-error - Supabase types mismatch
       .update({
-        mcq_score: mcqScore,
-        mcq_total: mcqTotal,
+        mcq_score: immediateScore,
+        mcq_total: immediateTotal,
         open_score: 0,
         open_total: 0,
-        total_score: mcqScore,
+        total_score: immediateScore,
         max_score: maxScore,
         level: finalLevel,
         status: 'graded',
