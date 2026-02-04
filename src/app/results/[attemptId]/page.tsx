@@ -1,11 +1,17 @@
 'use client'
 
 import { useEffect, useState, use } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getLevelDisplayName, getLevelColor, Level } from '@/lib/grading/level-calculator'
 import { QuestionnaireForm } from './questionnaire-form'
+
+interface RedirectInfo {
+  type: 'link' | 'embed'
+  url?: string
+}
 
 interface QuestionnaireData {
   id: string
@@ -64,8 +70,9 @@ export default function ResultsPage({
 }) {
   const { attemptId } = use(params)
   const [attempt, setAttempt] = useState<AttemptData | null>(null)
-  const [redirectUrl, setRedirectUrl] = useState<string | null>(null)
+  const [redirectInfo, setRedirectInfo] = useState<RedirectInfo | null>(null)
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireData | null>(null)
+  const router = useRouter()
   const [questionnaireQuestions, setQuestionnaireQuestions] = useState<QuestionnaireQuestionData[]>([])
   const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -84,7 +91,7 @@ export default function ResultsPage({
         }
 
         setAttempt(data.attempt)
-        setRedirectUrl(data.redirectUrl)
+        setRedirectInfo(data.redirectInfo)
         setQuestionnaire(data.questionnaire)
         setQuestionnaireQuestions(data.questionnaireQuestions || [])
         setQuestionnaireSubmitted(data.questionnaireSubmitted)
@@ -216,15 +223,25 @@ export default function ResultsPage({
             </div>
 
             {/* Redirect Button */}
-            {attempt.is_final && redirectUrl && (
+            {attempt.is_final && redirectInfo && (
               <div className="mt-8">
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={() => window.open(redirectUrl, '_blank')}
-                >
-                  Continue to Next Step
-                </Button>
+                {redirectInfo.type === 'link' && redirectInfo.url ? (
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={() => window.open(redirectInfo.url, '_blank')}
+                  >
+                    Continue to Next Step
+                  </Button>
+                ) : redirectInfo.type === 'embed' ? (
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={() => router.push(`/embed/${attemptId}`)}
+                  >
+                    Continue to Learning Content
+                  </Button>
+                ) : null}
               </div>
             )}
           </CardContent>

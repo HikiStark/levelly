@@ -235,19 +235,25 @@ export interface Database {
           id: string
           assignment_id: string
           level: string
-          redirect_url: string
+          redirect_type: 'link' | 'embed'
+          redirect_url: string | null
+          embed_code: string | null
         }
         Insert: {
           id?: string
           assignment_id: string
           level: string
-          redirect_url: string
+          redirect_type?: 'link' | 'embed'
+          redirect_url?: string | null
+          embed_code?: string | null
         }
         Update: {
           id?: string
           assignment_id?: string
           level?: string
-          redirect_url?: string
+          redirect_type?: 'link' | 'embed'
+          redirect_url?: string | null
+          embed_code?: string | null
         }
       }
       questionnaire: {

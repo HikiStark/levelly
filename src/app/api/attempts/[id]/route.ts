@@ -47,17 +47,23 @@ export async function GET(
 
     const attempt = data as unknown as AttemptWithRelations
 
-    // Get redirect URL if final
-    let redirectUrl: string | null = null
+    // Get redirect info if final
+    let redirectInfo: { type: 'link' | 'embed'; url?: string } | null = null
     if (attempt.is_final && attempt.level) {
       const { data: redirect } = await supabase
         .from('level_redirect')
-        .select('redirect_url')
+        .select('redirect_type, redirect_url')
         .eq('assignment_id', attempt.assignment_id)
         .eq('level', attempt.level)
         .single()
 
-      redirectUrl = (redirect as { redirect_url: string } | null)?.redirect_url || null
+      if (redirect) {
+        const typedRedirect = redirect as { redirect_type: 'link' | 'embed'; redirect_url: string | null }
+        redirectInfo = {
+          type: typedRedirect.redirect_type,
+          url: typedRedirect.redirect_url || undefined,
+        }
+      }
     }
 
     // Get questionnaire if exists and enabled
@@ -104,7 +110,7 @@ export async function GET(
 
     return NextResponse.json({
       attempt,
-      redirectUrl,
+      redirectInfo,
       questionnaire,
       questionnaireQuestions,
       questionnaireSubmitted,

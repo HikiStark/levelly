@@ -72,13 +72,24 @@ export function QuestionnaireSection({
   const handleToggle = async (enabled: boolean) => {
     setIsEnabled(enabled)
 
-    // If toggling and questionnaire exists, save immediately
     if (questionnaire) {
+      // Update existing questionnaire
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any)
         .from('questionnaire')
         .update({ is_enabled: enabled })
         .eq('id', questionnaire.id)
+      router.refresh()
+    } else if (enabled) {
+      // Create new questionnaire when enabling for the first time
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from('questionnaire').insert({
+        assignment_id: assignmentId,
+        title,
+        description: description || null,
+        is_enabled: true,
+      })
+      setHasChanges(false)
       router.refresh()
     }
   }
