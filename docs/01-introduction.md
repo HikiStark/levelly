@@ -70,10 +70,11 @@ Doing this manually would take forever! Levelly automates the entire process.
 ## Key Features
 
 ### For Teachers
-- **Create Quizzes** - Build quizzes with multiple-choice and open-ended questions
+- **Create Quizzes** - Build quizzes with multiple-choice, open-ended, slider, and image-map questions
+- **Question Images** - Add an optional image to any question for visual prompts
 - **AI Grading** - Open-ended answers are graded by artificial intelligence
 - **Automatic Leveling** - Students are automatically sorted into Beginner, Intermediate, or Advanced
-- **Smart Redirects** - Each level can be sent to different learning resources
+- **Smart Redirects** - Each level can link out or embed learning resources
 - **View Results** - See all student submissions and their performance
 
 ### For Students
@@ -82,7 +83,7 @@ Doing this manually would take forever! Levelly automates the entire process.
 - **Instant Feedback** - See your score and level immediately after submitting
 - **Personalized Path** - Get directed to learning materials that match your level
 
-## The Two Types of Questions
+## Question Types
 
 ### 1. Multiple Choice (MCQ)
 - Student picks from 2-4 options
@@ -93,6 +94,16 @@ Doing this manually would take forever! Levelly automates the entire process.
 - Student writes their own answer in a text box
 - **Graded by AI** - The system uses artificial intelligence to understand the answer
 - Not word-for-word matching - understands meaning and concepts
+
+### 3. Slider
+- Student drags a slider to a numeric value
+- Can allow a tolerance around the correct value
+- Great for estimating or measuring-style questions
+
+### 4. Image Map
+- Student answers questions on specific points of an image
+- Each image flag can be text, multiple choice, or slider
+- Useful for labeling diagrams, maps, and anatomy images
 
 ## How Scoring Works
 

@@ -77,7 +77,7 @@ This document explains step-by-step how teachers and students use Levelly.
 
 ### Step 3: Add Questions
 
-Teachers can add two types of questions:
+Teachers can add four types of questions. Any question can also include an optional image for visual prompts.
 
 #### Multiple Choice Questions (MCQ)
 
@@ -147,6 +147,18 @@ Teachers can add two types of questions:
    └────────────────────────────────────────────────────────┘
 ```
 
+#### Slider Questions
+
+- Students drag a slider to a numeric value
+- Teachers set `min`, `max`, `step`, `correct_value`, and an optional `tolerance`
+- Great for estimation or measurement questions
+
+#### Image Map Questions
+
+- Teachers upload a base image and place clickable flags
+- Each flag can be graded as text, multiple choice, or slider
+- Ideal for diagrams, maps, and labeling activities
+
 ### Step 4: Publish the Quiz
 
 ```
@@ -210,6 +222,7 @@ Teachers can add two types of questions:
 └─────────────────────────────────────────────────────────────────┘
 
    After students complete the quiz, where should they go?
+   Redirects can be either a link (URL) or embedded content (H5P, iframe).
 
    ┌────────────────────────────────────────────────────────┐
    │  Level Redirects:                                      │
@@ -476,7 +489,19 @@ Teachers can add two types of questions:
    Time taken: Milliseconds ⚡
 ```
 
+### Slider & Image-Map (Deterministic Parts): Instant Grading
+
+- Slider questions are graded immediately using configured correct value and tolerance.
+- Image-map flags that are MCQ or slider are graded immediately.
+- Image-map text flags are graded in the same background AI flow as open-ended answers.
+
 ### Open-Ended: AI Grading
+
+AI grading behavior highlights:
+- Grades by meaning (not strict word-for-word matching)
+- Ignores filler confidence phrases like "I think" or "probably"
+- If a student gives multiple conflicting answers and one is correct, it can award partial credit
+- Retries automatically on temporary AI failures, then falls back to manual-review feedback
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐

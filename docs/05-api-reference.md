@@ -127,7 +127,7 @@ Here are all the API "addresses" that Levelly uses:
    LEVEL REDIRECTS (Teachers)
    ══════════════════════════
    ┌──────────────────────────────────────────────────────────────────────────┐
-   │ POST /api/assignments/[id]/redirects     → Set redirect URL for level    │
+   │ POST /api/assignments/[id]/redirects     → Set link/embed redirect by level│
    └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -269,6 +269,23 @@ Here are all the API "addresses" that Levelly uses:
    └───────────────────────────────────────────────────────────────────────────┘
 ```
 
+Additional answer payload fields by question type:
+```json
+{
+  "answers": [
+    { "questionId": "q-slider", "sliderValue": 42 },
+    {
+      "questionId": "q-image-map",
+      "imageMapAnswers": {
+        "flag-1": "Nucleus",
+        "flag-2": "b",
+        "flag-3": "75"
+      }
+    }
+  ]
+}
+```
+
 #### 3. Get Attempt Results
 
 **What it does:** Gets the results of a quiz submission.
@@ -333,6 +350,15 @@ Here are all the API "addresses" that Levelly uses:
 
 **What it does:** Adds a new question to a quiz.
 
+Supports question types:
+- `mcq`
+- `open`
+- `slider`
+- `image_map`
+
+Optional field for any type:
+- `imageUrl` (question image)
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  POST /api/assignments/[id]/questions                                        │
@@ -372,6 +398,45 @@ Here are all the API "addresses" that Levelly uses:
    │   }                                                                       │
    │                                                                           │
    └───────────────────────────────────────────────────────────────────────────┘
+```
+
+`REQUEST (Slider Example)`
+```json
+{
+  "type": "slider",
+  "prompt": "Set the boiling point of water (C).",
+  "sliderConfig": {
+    "min": 0,
+    "max": 200,
+    "step": 1,
+    "correct_value": 100,
+    "tolerance": 2
+  },
+  "points": 10
+}
+```
+
+`REQUEST (Image-Map Example)`
+```json
+{
+  "type": "image_map",
+  "prompt": "Label the diagram",
+  "imageMapConfig": {
+    "base_image_url": "https://.../diagram.png",
+    "flags": [
+      {
+        "id": "f1",
+        "x": 0.25,
+        "y": 0.35,
+        "label": "Part A",
+        "answer_type": "text",
+        "reference_answer": "Nucleus",
+        "points": 2
+      }
+    ]
+  },
+  "points": 2
+}
 ```
 
 #### 5. Generate Share Link
@@ -414,6 +479,10 @@ Here are all the API "addresses" that Levelly uses:
 
 **What it does:** Configures where to send students of each level.
 
+Supports:
+- `redirectType: "link"` with `redirectUrl`
+- `redirectType: "embed"` with `embedCode`
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  POST /api/assignments/[id]/redirects                                        │
@@ -447,6 +516,15 @@ Here are all the API "addresses" that Levelly uses:
    │   }                                                                       │
    │                                                                           │
    └───────────────────────────────────────────────────────────────────────────┘
+```
+
+`REQUEST (Embed Redirect Example)`
+```json
+{
+  "level": "beginner",
+  "redirectType": "embed",
+  "embedCode": "<iframe src=\"https://...\" />"
+}
 ```
 
 #### 7. Delete Attempt

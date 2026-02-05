@@ -178,6 +178,12 @@ Levelly uses **6 main tables** to store all its data:
 
 ### 4. SHARE_LINK Table
 
+Question table additions in the latest schema:
+- `type` now supports `slider` and `image_map` in addition to `mcq` and `open`
+- `image_url` allows attaching an image to any question
+- `slider_config` stores slider settings (min, max, step, correct value, tolerance)
+- `image_map_config` stores base image and per-flag answer settings
+
 **Purpose:** Stores access tokens that let students take quizzes.
 
 ```
@@ -249,6 +255,10 @@ Levelly uses **6 main tables** to store all its data:
 
 ### 6. ANSWER Table
 
+Answer table additions in the latest schema:
+- `slider_value` stores numeric answers for slider questions
+- `image_map_answers` stores per-flag answers for image-map questions
+
 **Purpose:** Stores each individual answer a student gives.
 
 ```
@@ -271,6 +281,11 @@ Levelly uses **6 main tables** to store all its data:
 ```
 
 ### 7. LEVEL_REDIRECT Table
+
+Level redirect additions in the latest schema:
+- `redirect_type`: `link` or `embed`
+- `embed_code`: stores iframe/H5P embed markup when using embedded redirects
+- Constraint ensures link rows have `redirect_url` and embed rows have `embed_code`
 
 **Purpose:** Stores where to send students based on their level.
 

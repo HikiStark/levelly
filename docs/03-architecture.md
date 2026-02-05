@@ -429,6 +429,8 @@ levelly/
 |------|--------------|
 | `src/app/api/quiz/submit/route.ts` | The main "brain" - handles quiz submission, grading, and leveling |
 | `src/lib/grading/open-answer.ts` | Sends answers to AI and gets scores back |
+| `src/lib/grading/slider.ts` | Grades slider questions deterministically |
+| `src/lib/grading/image-map.ts` | Grades image-map flags (deterministic + AI text flags) |
 | `src/lib/grading/level-calculator.ts` | Converts percentage score to Beginner/Intermediate/Advanced |
 | `src/middleware.ts` | Guards teacher pages - redirects non-logged-in users |
 | `src/lib/supabase/types.ts` | Defines the shape of all data in the database |
