@@ -43,9 +43,82 @@ export type QuestionnaireQuestionOptions =
   | { id: string; text: string }[] // MCQ options
   | { min: number; max: number; labels?: Record<string, string> } // Rating options
 
+// Session status type
+export type JourneyStatus = 'in_progress' | 'completed'
+
 export interface Database {
   public: {
     Tables: {
+      session: {
+        Row: {
+          id: string
+          assignment_id: string
+          title: string
+          description: string | null
+          order_index: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          assignment_id: string
+          title: string
+          description?: string | null
+          order_index: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          assignment_id?: string
+          title?: string
+          description?: string | null
+          order_index?: number
+          created_at?: string
+        }
+      }
+      student_journey: {
+        Row: {
+          id: string
+          assignment_id: string
+          share_link_id: string | null
+          student_name: string | null
+          student_email: string | null
+          current_session_index: number
+          overall_status: JourneyStatus
+          overall_level: string | null
+          total_score: number
+          max_score: number
+          started_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          assignment_id: string
+          share_link_id?: string | null
+          student_name?: string | null
+          student_email?: string | null
+          current_session_index?: number
+          overall_status?: JourneyStatus
+          overall_level?: string | null
+          total_score?: number
+          max_score?: number
+          started_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          assignment_id?: string
+          share_link_id?: string | null
+          student_name?: string | null
+          student_email?: string | null
+          current_session_index?: number
+          overall_status?: JourneyStatus
+          overall_level?: string | null
+          total_score?: number
+          max_score?: number
+          started_at?: string
+          completed_at?: string | null
+        }
+      }
       teacher: {
         Row: {
           id: string
@@ -53,6 +126,8 @@ export interface Database {
           name: string
           email: string
           created_at: string
+          data_consent_given: boolean
+          data_consent_timestamp: string | null
         }
         Insert: {
           id?: string
@@ -60,6 +135,8 @@ export interface Database {
           name: string
           email: string
           created_at?: string
+          data_consent_given?: boolean
+          data_consent_timestamp?: string | null
         }
         Update: {
           id?: string
@@ -67,6 +144,8 @@ export interface Database {
           name?: string
           email?: string
           created_at?: string
+          data_consent_given?: boolean
+          data_consent_timestamp?: string | null
         }
       }
       assignment: {
@@ -77,6 +156,8 @@ export interface Database {
           description: string | null
           status: 'draft' | 'published' | 'archived'
           created_at: string
+          show_correct_answers: boolean
+          show_ai_feedback: boolean
         }
         Insert: {
           id?: string
@@ -85,6 +166,8 @@ export interface Database {
           description?: string | null
           status?: 'draft' | 'published' | 'archived'
           created_at?: string
+          show_correct_answers?: boolean
+          show_ai_feedback?: boolean
         }
         Update: {
           id?: string
@@ -93,12 +176,15 @@ export interface Database {
           description?: string | null
           status?: 'draft' | 'published' | 'archived'
           created_at?: string
+          show_correct_answers?: boolean
+          show_ai_feedback?: boolean
         }
       }
       question: {
         Row: {
           id: string
           assignment_id: string
+          session_id: string | null
           type: QuestionType
           prompt: string
           choices: { id: string; text: string }[] | null
@@ -115,6 +201,7 @@ export interface Database {
         Insert: {
           id?: string
           assignment_id: string
+          session_id?: string | null
           type: QuestionType
           prompt: string
           choices?: { id: string; text: string }[] | null
@@ -131,6 +218,7 @@ export interface Database {
         Update: {
           id?: string
           assignment_id?: string
+          session_id?: string | null
           type?: QuestionType
           prompt?: string
           choices?: { id: string; text: string }[] | null
@@ -175,6 +263,8 @@ export interface Database {
         Row: {
           id: string
           assignment_id: string
+          session_id: string | null
+          journey_id: string | null
           share_link_id: string | null
           student_name: string | null
           student_email: string | null
@@ -195,6 +285,8 @@ export interface Database {
         Insert: {
           id?: string
           assignment_id: string
+          session_id?: string | null
+          journey_id?: string | null
           share_link_id?: string | null
           student_name?: string | null
           student_email?: string | null
@@ -215,6 +307,8 @@ export interface Database {
         Update: {
           id?: string
           assignment_id?: string
+          session_id?: string | null
+          journey_id?: string | null
           share_link_id?: string | null
           student_name?: string | null
           student_email?: string | null
@@ -281,6 +375,7 @@ export interface Database {
         Row: {
           id: string
           assignment_id: string
+          session_id: string | null
           level: string
           redirect_type: 'link' | 'embed'
           redirect_url: string | null
@@ -289,6 +384,7 @@ export interface Database {
         Insert: {
           id?: string
           assignment_id: string
+          session_id?: string | null
           level: string
           redirect_type?: 'link' | 'embed'
           redirect_url?: string | null
@@ -297,6 +393,7 @@ export interface Database {
         Update: {
           id?: string
           assignment_id?: string
+          session_id?: string | null
           level?: string
           redirect_type?: 'link' | 'embed'
           redirect_url?: string | null
@@ -434,6 +531,8 @@ export type ShareLink = Database['public']['Tables']['share_link']['Row']
 export type Attempt = Database['public']['Tables']['attempt']['Row']
 export type Answer = Database['public']['Tables']['answer']['Row']
 export type LevelRedirect = Database['public']['Tables']['level_redirect']['Row']
+export type Session = Database['public']['Tables']['session']['Row']
+export type StudentJourney = Database['public']['Tables']['student_journey']['Row']
 
 // Extended types
 export type AssignmentWithQuestions = Assignment & {
@@ -456,4 +555,25 @@ export type QuestionnaireWithQuestions = Questionnaire & {
 
 export type QuestionnaireResponseWithAnswers = QuestionnaireResponse & {
   answers: (QuestionnaireAnswer & { question: QuestionnaireQuestion })[]
+}
+
+// Session-related extended types
+export type SessionWithQuestions = Session & {
+  questions: Question[]
+}
+
+export type AssignmentWithSessions = Assignment & {
+  sessions: Session[]
+}
+
+export type AssignmentWithSessionsAndQuestions = Assignment & {
+  sessions: SessionWithQuestions[]
+}
+
+export type StudentJourneyWithAttempts = StudentJourney & {
+  attempts: (Attempt & { session: Session | null })[]
+}
+
+export type AttemptWithSession = Attempt & {
+  session: Session | null
 }

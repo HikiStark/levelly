@@ -15,6 +15,7 @@ export async function GET(
       .select(`
         id,
         assignment_id,
+        session_id,
         level,
         is_final,
         assignment(title)
@@ -45,12 +46,19 @@ export async function GET(
     }
 
     // Get level redirect with embed content
-    const { data: redirect, error: redirectError } = await supabase
+    let redirectQuery = supabase
       .from('level_redirect')
       .select('*')
       .eq('assignment_id', attempt.assignment_id)
       .eq('level', attempt.level)
-      .single()
+
+    if (attempt.session_id) {
+      redirectQuery = redirectQuery.eq('session_id', attempt.session_id)
+    } else {
+      redirectQuery = redirectQuery.is('session_id', null)
+    }
+
+    const { data: redirect, error: redirectError } = await redirectQuery.single()
 
     if (redirectError || !redirect) {
       return NextResponse.json(
@@ -67,38 +75,10 @@ export async function GET(
       )
     }
 
-    // Check questionnaire status
-    let hasQuestionnaire = false
-    let questionnaireSubmitted = false
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: questionnaire } = await (supabase as any)
-      .from('questionnaire')
-      .select('id')
-      .eq('assignment_id', attempt.assignment_id)
-      .eq('is_enabled', true)
-      .maybeSingle()
-
-    if (questionnaire) {
-      hasQuestionnaire = true
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: response } = await (supabase as any)
-        .from('questionnaire_response')
-        .select('id')
-        .eq('questionnaire_id', questionnaire.id)
-        .eq('attempt_id', attemptId)
-        .maybeSingle()
-
-      questionnaireSubmitted = !!response
-    }
-
     return NextResponse.json({
       embedCode: redirect.embed_code,
       level: attempt.level,
       assignmentTitle: (attempt.assignment as { title: string } | null)?.title || 'Quiz',
-      hasQuestionnaire,
-      questionnaireSubmitted,
     })
   } catch (error) {
     console.error('Error fetching embed content:', error)

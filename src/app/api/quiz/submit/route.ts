@@ -13,6 +13,8 @@ type AttemptInsert = Database['public']['Tables']['attempt']['Insert']
 interface SubmitRequest {
   assignmentId: string
   shareLinkId: string
+  sessionId?: string | null
+  journeyId?: string | null
   studentName: string | null
   studentEmail: string | null
   answers: {
@@ -31,7 +33,8 @@ async function gradeQuestionsInBackground(
   immediateScore: number,
   immediateTotal: number,
   maxScore: number,
-  pendingTotal: number
+  pendingTotal: number,
+  journeyId?: string | null
 ) {
   // Create a new Supabase client for background processing
   const supabase = await createClient()
@@ -144,21 +147,116 @@ async function gradeQuestionsInBackground(
     })
     .eq('id', attemptId)
 
+  // If this is part of a journey, update journey totals
+  if (journeyId) {
+    // Get all completed attempts for this journey to recalculate totals
+    const { data: journeyAttempts } = await supabase
+      .from('attempt')
+      .select('total_score, max_score')
+      .eq('journey_id', journeyId)
+      .eq('is_final', true)
+
+    if (journeyAttempts) {
+      const journeyTotalScore = journeyAttempts.reduce((sum, a) => sum + (a.total_score || 0), 0)
+      const journeyMaxScore = journeyAttempts.reduce((sum, a) => sum + (a.max_score || 0), 0)
+
+      await supabase
+        .from('student_journey')
+        // @ts-expect-error - Supabase types mismatch
+        .update({
+          total_score: journeyTotalScore,
+          max_score: journeyMaxScore,
+        })
+        .eq('id', journeyId)
+    }
+  }
+
   console.log(`[Grading] Completed grading for attempt ${attemptId}. Score: ${totalScore}/${maxScore}, Level: ${finalLevel}`)
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: SubmitRequest = await request.json()
-    const { assignmentId, shareLinkId, studentName, studentEmail, answers } = body
+    const { assignmentId, shareLinkId, sessionId, journeyId, studentName, studentEmail, answers } = body
 
     const supabase = await createClient()
 
-    // Get all questions for this assignment
-    const { data: questions, error: questionsError } = await supabase
+    if (journeyId) {
+      if (!sessionId) {
+        return NextResponse.json(
+          { error: 'sessionId is required when submitting a journey attempt' },
+          { status: 400 }
+        )
+      }
+
+      const { data: journey } = await supabase
+        .from('student_journey')
+        .select('id, assignment_id, current_session_index')
+        .eq('id', journeyId)
+        .maybeSingle()
+
+      if (!journey) {
+        return NextResponse.json(
+          { error: 'Journey not found' },
+          { status: 404 }
+        )
+      }
+
+      if (journey.assignment_id !== assignmentId) {
+        return NextResponse.json(
+          { error: 'Journey does not match assignment' },
+          { status: 400 }
+        )
+      }
+
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('session')
+        .select('id')
+        .eq('assignment_id', journey.assignment_id)
+        .order('order_index', { ascending: true })
+
+      if (sessionsError || !sessions || sessions.length === 0) {
+        return NextResponse.json(
+          { error: 'No sessions found for this journey' },
+          { status: 400 }
+        )
+      }
+
+      const expectedSessionId = sessions[journey.current_session_index]?.id
+      if (!expectedSessionId || expectedSessionId !== sessionId) {
+        return NextResponse.json(
+          { error: 'Invalid session for this journey' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Build query for questions
+    let questionsQuery = supabase
       .from('question')
       .select('*')
       .eq('assignment_id', assignmentId)
+
+    // If sessionId is provided, filter by session
+    if (sessionId) {
+      questionsQuery = questionsQuery.eq('session_id', sessionId)
+    } else {
+      // For backward compatibility: if no sessionId, get questions without a session
+      // or all questions if the assignment has no sessions
+      const { data: sessions } = await supabase
+        .from('session')
+        .select('id')
+        .eq('assignment_id', assignmentId)
+        .limit(1)
+
+      if (sessions && sessions.length > 0) {
+        // Assignment has sessions but no sessionId provided - this shouldn't happen
+        // but handle gracefully by getting questions without a session
+        questionsQuery = questionsQuery.is('session_id', null)
+      }
+    }
+
+    const { data: questions, error: questionsError } = await questionsQuery
 
     if (questionsError || !questions) {
       return NextResponse.json(
@@ -183,6 +281,8 @@ export async function POST(request: NextRequest) {
     const attemptInsert = {
       assignment_id: assignmentId,
       share_link_id: shareLinkId,
+      session_id: sessionId || null,
+      journey_id: journeyId || null,
       student_name: studentName,
       student_email: studentEmail,
       status: questionsNeedingAIGrading.length > 0 ? 'grading' : 'graded',
@@ -308,7 +408,8 @@ export async function POST(request: NextRequest) {
             immediateScore,
             immediateTotal,
             maxScore,
-            pendingTotal
+            pendingTotal,
+            journeyId
           )
         } catch (error) {
           console.error(`[Grading] Background grading failed for attempt ${attemptId}:`, error)
@@ -318,6 +419,8 @@ export async function POST(request: NextRequest) {
       // Return immediately - student goes to results page to wait
       return NextResponse.json({
         attemptId,
+        journeyId: journeyId || null,
+        sessionId: sessionId || null,
         status: 'grading',
         isFinal: false,
       })
@@ -342,8 +445,33 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', attemptId)
 
+    // If this is part of a journey, update journey totals
+    if (journeyId) {
+      const { data: journeyAttempts } = await supabase
+        .from('attempt')
+        .select('total_score, max_score')
+        .eq('journey_id', journeyId)
+        .eq('is_final', true)
+
+      if (journeyAttempts) {
+        const journeyTotalScore = journeyAttempts.reduce((sum, a) => sum + (a.total_score || 0), 0)
+        const journeyMaxScore = journeyAttempts.reduce((sum, a) => sum + (a.max_score || 0), 0)
+
+        await supabase
+          .from('student_journey')
+          // @ts-expect-error - Supabase types mismatch
+          .update({
+            total_score: journeyTotalScore,
+            max_score: journeyMaxScore,
+          })
+          .eq('id', journeyId)
+      }
+    }
+
     return NextResponse.json({
       attemptId,
+      journeyId: journeyId || null,
+      sessionId: sessionId || null,
       level: finalLevel,
       status: 'graded',
       isFinal: true,

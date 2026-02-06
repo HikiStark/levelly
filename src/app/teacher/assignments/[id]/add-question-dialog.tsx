@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -19,19 +19,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { QuestionType, SliderConfig } from '@/lib/supabase/types'
+import { Question, QuestionType, Session, SliderConfig } from '@/lib/supabase/types'
 
 interface AddQuestionDialogProps {
   assignmentId: string
-  nextOrderIndex: number
+  questions: Question[]
 }
 
-export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionDialogProps) {
+export function AddQuestionDialog({ assignmentId, questions }: AddQuestionDialogProps) {
   const [open, setOpen] = useState(false)
   const [questionType, setQuestionType] = useState<QuestionType>('mcq')
   const [prompt, setPrompt] = useState('')
   const [points, setPoints] = useState(1)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
 
   // MCQ fields
   const [choices, setChoices] = useState([
@@ -60,11 +62,27 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
   const router = useRouter()
   const supabase = createClient()
 
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const response = await fetch(`/api/sessions?assignmentId=${assignmentId}`)
+        const data = await response.json()
+        if (response.ok) {
+          setSessions(data.sessions || [])
+        }
+      } catch {
+        setSessions([])
+      }
+    }
+    fetchSessions()
+  }, [assignmentId])
+
   const resetForm = () => {
     setQuestionType('mcq')
     setPrompt('')
     setPoints(1)
     setImageUrl(null)
+    setSelectedSessionId(null)
     setChoices([
       { id: 'a', text: '' },
       { id: 'b', text: '' },
@@ -85,6 +103,12 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
     setError(null)
   }
 
+  const getNextOrderIndex = (sessionId: string | null) => {
+    const relevant = questions.filter(q => (q.session_id || null) === sessionId)
+    const maxIndex = relevant.reduce((max, q) => Math.max(max, q.order_index), -1)
+    return maxIndex + 1
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -92,10 +116,11 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
 
     const questionData: Record<string, unknown> = {
       assignment_id: assignmentId,
+      session_id: selectedSessionId,
       type: questionType,
       prompt,
       points,
-      order_index: nextOrderIndex,
+      order_index: getNextOrderIndex(selectedSessionId),
       image_url: imageUrl,
     }
 
@@ -186,6 +211,26 @@ export function AddQuestionDialog({ assignmentId, nextOrderIndex }: AddQuestionD
           {error && (
             <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
               {error}
+            </div>
+          )}
+
+          {/* Session Selection */}
+          {sessions.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="session-select">Session</Label>
+              <select
+                id="session-select"
+                value={selectedSessionId || ''}
+                onChange={(e) => setSelectedSessionId(e.target.value || null)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="">No session (legacy)</option>
+                {sessions.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {session.title}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 

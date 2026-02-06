@@ -10,7 +10,8 @@ import { ImageMapEditor } from './image-map-editor'
 import { ShareLinkSection } from './share-link-section'
 import { LevelRedirectSection } from './level-redirect-section'
 import { PublishButton } from './publish-button'
-import { QuestionnaireSection } from './questionnaire-section'
+import { FeedbackSettingsSection } from './feedback-settings-section'
+import { SessionManager } from './session-manager'
 
 export default async function AssignmentPage({
   params,
@@ -47,25 +48,6 @@ export default async function AssignmentPage({
     .select('*')
     .eq('assignment_id', id)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: questionnaire } = await (supabase as any)
-    .from('questionnaire')
-    .select('*')
-    .eq('assignment_id', id)
-    .maybeSingle()
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let questionnaireQuestions: any[] = []
-  if (questionnaire) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
-      .from('questionnaire_question')
-      .select('*')
-      .eq('questionnaire_id', questionnaire.id)
-      .order('order_index', { ascending: true })
-    questionnaireQuestions = data || []
-  }
-
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-start">
@@ -89,6 +71,19 @@ export default async function AssignmentPage({
         </div>
       </div>
 
+      {/* Sessions Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Sessions</CardTitle>
+          <CardDescription>
+            Organize questions into sequential sessions for multi-step quizzes
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SessionManager assignmentId={id} questions={questions || []} />
+        </CardContent>
+      </Card>
+
       {/* Questions Section */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -101,11 +96,11 @@ export default async function AssignmentPage({
           <div className="flex gap-2">
             <AddQuestionDialog
               assignmentId={id}
-              nextOrderIndex={(questions?.length || 0) + 1}
+              questions={questions || []}
             />
             <ImageMapEditor
               assignmentId={id}
-              nextOrderIndex={(questions?.length || 0) + 1}
+              questions={questions || []}
             />
           </div>
         </CardHeader>
@@ -127,19 +122,19 @@ export default async function AssignmentPage({
         </CardContent>
       </Card>
 
-      {/* Student Questionnaire */}
+      {/* Student Feedback Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>Student Questionnaire</CardTitle>
+          <CardTitle>Student Feedback Settings</CardTitle>
           <CardDescription>
-            Optional feedback form shown to students after they see their results
+            Control what information students see after completing the quiz
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <QuestionnaireSection
+          <FeedbackSettingsSection
             assignmentId={id}
-            questionnaire={questionnaire}
-            questions={questionnaireQuestions}
+            showCorrectAnswers={assignment.show_correct_answers ?? true}
+            showAiFeedback={assignment.show_ai_feedback ?? true}
           />
         </CardContent>
       </Card>

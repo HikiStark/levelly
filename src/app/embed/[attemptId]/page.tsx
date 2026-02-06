@@ -9,8 +9,6 @@ interface EmbedData {
   embedCode: string
   level: string
   assignmentTitle: string
-  hasQuestionnaire: boolean
-  questionnaireSubmitted: boolean
 }
 
 export default function EmbedPage({
@@ -87,14 +85,6 @@ export default function EmbedPage({
           >
             &larr; Back to Results
           </Button>
-
-          {data.hasQuestionnaire && !data.questionnaireSubmitted && (
-            <Button
-              onClick={() => router.push(`/results/${attemptId}#questionnaire`)}
-            >
-              Continue to Questionnaire &rarr;
-            </Button>
-          )}
         </div>
 
         {/* Embed Content Container */}
@@ -117,18 +107,9 @@ export default function EmbedPage({
           >
             &larr; Back to Results
           </Button>
-
-          {data.hasQuestionnaire && !data.questionnaireSubmitted ? (
-            <Button
-              onClick={() => router.push(`/results/${attemptId}#questionnaire`)}
-            >
-              Continue to Questionnaire &rarr;
-            </Button>
-          ) : (
-            <p className="text-sm text-gray-500">
-              You have completed all steps.
-            </p>
-          )}
+          <p className="text-sm text-gray-500">
+            You can return to results at any time.
+          </p>
         </div>
       </div>
     </div>

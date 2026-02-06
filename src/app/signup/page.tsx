@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function SignupPage() {
@@ -15,6 +16,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [consentGiven, setConsentGiven] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -48,6 +50,15 @@ export default function SignupPage() {
     }
 
     // Teacher profile is created automatically by database trigger
+    // Update consent status
+    await supabase
+      .from('teacher')
+      .update({
+        data_consent_given: true,
+        data_consent_timestamp: new Date().toISOString(),
+      })
+      .eq('user_id', authData.user.id)
+
     router.push('/teacher')
     router.refresh()
   }
@@ -100,9 +111,22 @@ export default function SignupPage() {
                 required
               />
             </div>
+            <div className="flex items-start gap-3 pt-2">
+              <Checkbox
+                id="consent"
+                checked={consentGiven}
+                onCheckedChange={(checked) => setConsentGiven(checked === true)}
+              />
+              <Label
+                htmlFor="consent"
+                className="text-sm text-gray-600 leading-relaxed cursor-pointer"
+              >
+                I consent to the collection and processing of my personal data (including email, name, and usage information) to provide and improve this service.
+              </Label>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !consentGiven}>
               {loading ? 'Creating account...' : 'Create account'}
             </Button>
             <p className="text-sm text-gray-600">

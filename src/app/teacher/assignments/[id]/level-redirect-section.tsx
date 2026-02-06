@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { LevelRedirect } from '@/lib/supabase/types'
+import { LevelRedirect, Session } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,10 +32,27 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
     intermediate: { type: 'none', url: '', embedCode: '' },
     advanced: { type: 'none', url: '', embedCode: '' },
   })
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [previewLevel, setPreviewLevel] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const response = await fetch(`/api/sessions?assignmentId=${assignmentId}`)
+        const data = await response.json()
+        if (response.ok) {
+          setSessions(data.sessions || [])
+        }
+      } catch {
+        setSessions([])
+      }
+    }
+    fetchSessions()
+  }, [assignmentId])
 
   useEffect(() => {
     const configMap: Record<string, LevelConfig> = {
@@ -43,15 +60,17 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
       intermediate: { type: 'none', url: '', embedCode: '' },
       advanced: { type: 'none', url: '', embedCode: '' },
     }
-    redirects.forEach((r) => {
-      configMap[r.level] = {
-        type: r.redirect_type as RedirectType,
-        url: r.redirect_url || '',
-        embedCode: r.embed_code || '',
-      }
-    })
+    redirects
+      .filter(r => (r.session_id || null) === selectedSessionId)
+      .forEach((r) => {
+        configMap[r.level] = {
+          type: r.redirect_type as RedirectType,
+          url: r.redirect_url || '',
+          embedCode: r.embed_code || '',
+        }
+      })
     setConfigs(configMap)
-  }, [redirects])
+  }, [redirects, selectedSessionId])
 
   const updateConfig = (level: string, field: keyof LevelConfig, value: string) => {
     setConfigs(prev => ({
@@ -65,7 +84,7 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
 
     for (const level of LEVELS) {
       const config = configs[level]
-      const existing = redirects.find((r) => r.level === level)
+      const existing = redirects.find((r) => r.level === level && (r.session_id || null) === selectedSessionId)
 
       if (config.type === 'none') {
         // Delete if exists
@@ -78,6 +97,7 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
       } else {
         const data = {
           assignment_id: assignmentId,
+          session_id: selectedSessionId,
           level,
           redirect_type: config.type as 'link' | 'embed',
           redirect_url: config.type === 'link' ? config.url.trim() : null,
@@ -112,6 +132,25 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
         Configure what students see based on their level. You can either redirect them to an external link
         or show them embedded content (like H5P interactive modules).
       </p>
+
+      {sessions.length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="session-redirect-select">Session</Label>
+          <select
+            id="session-redirect-select"
+            value={selectedSessionId || ''}
+            onChange={(e) => setSelectedSessionId(e.target.value || null)}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+          >
+            <option value="">Final (after all sessions)</option>
+            {sessions.map((session) => (
+              <option key={session.id} value={session.id}>
+                {session.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="space-y-6">
         {LEVELS.map((level) => (

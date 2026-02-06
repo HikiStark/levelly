@@ -18,12 +18,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { ImageMapFlag, ImageMapConfig, SliderConfig } from '@/lib/supabase/types'
+import { ImageMapFlag, ImageMapConfig, SliderConfig, Question, Session } from '@/lib/supabase/types'
 import { MapPin, Trash2, Settings, Plus } from 'lucide-react'
 
 interface ImageMapEditorProps {
   assignmentId: string
-  nextOrderIndex: number
+  questions: Question[]
 }
 
 interface FlagFormData {
@@ -59,7 +59,7 @@ const defaultFlagForm: FlagFormData = {
   points: 1,
 }
 
-export function ImageMapEditor({ assignmentId, nextOrderIndex }: ImageMapEditorProps) {
+export function ImageMapEditor({ assignmentId, questions }: ImageMapEditorProps) {
   const [open, setOpen] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [baseImageUrl, setBaseImageUrl] = useState<string | null>(null)
@@ -68,12 +68,29 @@ export function ImageMapEditor({ assignmentId, nextOrderIndex }: ImageMapEditorP
   const [flagFormOpen, setFlagFormOpen] = useState(false)
   const [flagForm, setFlagForm] = useState<FlagFormData>({ ...defaultFlagForm })
   const [editingFlagId, setEditingFlagId] = useState<string | null>(null)
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const response = await fetch(`/api/sessions?assignmentId=${assignmentId}`)
+        const data = await response.json()
+        if (response.ok) {
+          setSessions(data.sessions || [])
+        }
+      } catch {
+        setSessions([])
+      }
+    }
+    fetchSessions()
+  }, [assignmentId])
 
   const resetForm = () => {
     setPrompt('')
@@ -83,6 +100,7 @@ export function ImageMapEditor({ assignmentId, nextOrderIndex }: ImageMapEditorP
     setFlagFormOpen(false)
     setFlagForm({ ...defaultFlagForm })
     setEditingFlagId(null)
+    setSelectedSessionId(null)
     setError(null)
   }
 
@@ -217,6 +235,12 @@ export function ImageMapEditor({ assignmentId, nextOrderIndex }: ImageMapEditorP
     return flags.reduce((sum, f) => sum + f.points, 0)
   }
 
+  const getNextOrderIndex = (sessionId: string | null) => {
+    const relevant = questions.filter(q => (q.session_id || null) === sessionId)
+    const maxIndex = relevant.reduce((max, q) => Math.max(max, q.order_index), -1)
+    return maxIndex + 1
+  }
+
   const handleSubmit = async () => {
     setError(null)
 
@@ -269,10 +293,11 @@ export function ImageMapEditor({ assignmentId, nextOrderIndex }: ImageMapEditorP
       .from('question')
       .insert({
         assignment_id: assignmentId,
+        session_id: selectedSessionId,
         type: 'image_map',
         prompt,
         points: getTotalPoints(),
-        order_index: nextOrderIndex,
+        order_index: getNextOrderIndex(selectedSessionId),
         image_map_config: imageMapConfig,
       })
 
@@ -329,6 +354,26 @@ export function ImageMapEditor({ assignmentId, nextOrderIndex }: ImageMapEditorP
               rows={2}
             />
           </div>
+
+          {/* Session Selection */}
+          {sessions.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="session-select">Session</Label>
+              <select
+                id="session-select"
+                value={selectedSessionId || ''}
+                onChange={(e) => setSelectedSessionId(e.target.value || null)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="">No session (legacy)</option>
+                {sessions.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {session.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Base Image Upload */}
           <div className="space-y-2">

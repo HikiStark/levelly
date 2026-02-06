@@ -46,24 +46,6 @@ export default async function QuizPage({
     )
   }
 
-  // Get questions
-  const { data: questions } = await supabase
-    .from('question')
-    .select('*')
-    .eq('assignment_id', assignment.id)
-    .order('order_index', { ascending: true })
-
-  if (!questions || questions.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">No Questions</h1>
-          <p className="text-gray-600">This quiz has no questions yet.</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <QuizContainer
       assignment={{
@@ -71,8 +53,8 @@ export default async function QuizPage({
         title: assignment.title,
         description: assignment.description,
       }}
-      questions={questions}
       shareLinkId={shareLink.id}
+      token={token}
     />
   )
 }

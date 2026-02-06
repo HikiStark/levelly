@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Question } from '@/lib/supabase/types'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Question, Session } from '@/lib/supabase/types'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -11,6 +12,8 @@ import { MCQQuestion } from './mcq-question'
 import { OpenQuestion } from './open-question'
 import { SliderQuestion } from './slider-question'
 import { ImageMapQuestion } from './image-map-question'
+import { SessionProgressBar } from '@/components/session-progress-bar'
+import { SessionMap } from '@/components/session-map'
 
 interface QuizContainerProps {
   assignment: {
@@ -18,8 +21,19 @@ interface QuizContainerProps {
     title: string
     description: string | null
   }
-  questions: Question[]
   shareLinkId: string
+  token: string
+}
+
+interface JourneyStatusResponse {
+  journey: {
+    id: string
+    current_session_index: number
+    overall_status: 'in_progress' | 'completed'
+  }
+  sessions: Session[]
+  currentSession: Session | null
+  totalSessions: number
 }
 
 interface AnswerState {
@@ -31,14 +45,103 @@ interface AnswerState {
   }
 }
 
-export function QuizContainer({ assignment, questions, shareLinkId }: QuizContainerProps) {
+export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerProps) {
   const [started, setStarted] = useState(false)
   const [studentName, setStudentName] = useState('')
   const [studentEmail, setStudentEmail] = useState('')
   const [answers, setAnswers] = useState<AnswerState>({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [journeyId, setJourneyId] = useState<string | null>(null)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [currentSessionIndex, setCurrentSessionIndex] = useState(0)
+  const [journeyCompleted, setJourneyCompleted] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [loadingQuestions, setLoadingQuestions] = useState(false)
+  const [questions, setQuestions] = useState<Question[]>([])
+
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const supabase = createClient()
+
+  const urlJourneyId = useMemo(() => searchParams.get('journeyId'), [searchParams])
+
+  useEffect(() => {
+    const initialize = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        let fetchedSessions: Session[] = []
+
+        const sessionsResponse = await fetch(`/api/sessions?assignmentId=${assignment.id}`)
+        if (sessionsResponse.ok) {
+          const sessionsData = await sessionsResponse.json()
+          fetchedSessions = sessionsData.sessions || []
+        }
+
+        if (urlJourneyId) {
+          const journeyResponse = await fetch(`/api/journey/${urlJourneyId}`)
+          const journeyData = await journeyResponse.json()
+          if (!journeyResponse.ok) {
+            throw new Error(journeyData.error || 'Failed to load journey')
+          }
+          const payload = journeyData as JourneyStatusResponse
+          setJourneyId(payload.journey.id)
+          setCurrentSessionIndex(payload.journey.current_session_index)
+          setSessions(payload.sessions || fetchedSessions)
+          setCurrentSessionId(payload.currentSession?.id || null)
+          setJourneyCompleted(payload.journey.overall_status === 'completed')
+          setStarted(true)
+        } else {
+          setSessions(fetchedSessions)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load quiz')
+      } finally {
+        setLoading(false)
+      }
+    }
+    initialize()
+  }, [assignment.id, urlJourneyId])
+
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      if (!started) return
+      setLoadingQuestions(true)
+      setError(null)
+      try {
+        let query = supabase
+          .from('question')
+          .select('*')
+          .eq('assignment_id', assignment.id)
+
+        if (sessions.length > 0) {
+          if (!currentSessionId) {
+            setQuestions([])
+            return
+          }
+          query = query.eq('session_id', currentSessionId)
+        }
+
+        const { data, error: questionsError } = await query.order('order_index', { ascending: true })
+        if (questionsError) {
+          throw new Error(questionsError.message)
+        }
+        setQuestions((data as Question[]) || [])
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load questions')
+      } finally {
+        setLoadingQuestions(false)
+      }
+    }
+    fetchQuestions()
+  }, [assignment.id, currentSessionId, sessions.length, started])
+
+  useEffect(() => {
+    setAnswers({})
+    setSubmitting(false)
+  }, [currentSessionId])
 
   const handleMCQSelect = (questionId: string, choiceId: string) => {
     setAnswers({
@@ -72,6 +175,43 @@ export function QuizContainer({ assignment, questions, shareLinkId }: QuizContai
     })
   }
 
+  const handleStart = async () => {
+    setError(null)
+    if (sessions.length === 0) {
+      setStarted(true)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/journey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignmentId: assignment.id,
+          shareLinkId,
+          studentName: studentName || null,
+          studentEmail: studentEmail || null,
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to start journey')
+      }
+
+      setJourneyId(data.journeyId)
+      setSessions(data.sessions || sessions)
+      setCurrentSessionId(data.firstSessionId)
+      setCurrentSessionIndex(0)
+      setStarted(true)
+      if (data.journeyId) {
+        router.replace(`/quiz/${token}?journeyId=${data.journeyId}`)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start journey')
+    }
+  }
+
   const handleSubmit = async () => {
     setSubmitting(true)
     setError(null)
@@ -83,6 +223,8 @@ export function QuizContainer({ assignment, questions, shareLinkId }: QuizContai
         body: JSON.stringify({
           assignmentId: assignment.id,
           shareLinkId,
+          sessionId: currentSessionId,
+          journeyId,
           studentName: studentName || null,
           studentEmail: studentEmail || null,
           answers: Object.entries(answers).map(([questionId, answer]) => ({
@@ -119,10 +261,43 @@ export function QuizContainer({ assignment, questions, shareLinkId }: QuizContai
 
   const answeredCount = Object.keys(answers).filter((qId) => isAnswered(answers[qId])).length
 
-  if (!started) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading quiz...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (journeyCompleted) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>Journey Complete</CardTitle>
+              <CardDescription>You have already finished this journey.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {journeyId && (
+                <Button onClick={() => router.push(`/results/journey/${journeyId}`)}>
+                  View Overall Results
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  if (!started) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="max-w-3xl mx-auto space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>{assignment.title}</CardTitle>
@@ -131,9 +306,14 @@ export function QuizContainer({ assignment, questions, shareLinkId }: QuizContai
               )}
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-gray-600">
-                This quiz has {questions.length} question{questions.length !== 1 ? 's' : ''}.
-              </p>
+              {error && (
+                <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
+                  {error}
+                </div>
+              )}
+              {sessions.length > 0 && (
+                <SessionMap sessions={sessions} />
+              )}
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Your Name (optional)</Label>
@@ -155,7 +335,7 @@ export function QuizContainer({ assignment, questions, shareLinkId }: QuizContai
                   />
                 </div>
               </div>
-              <Button onClick={() => setStarted(true)} className="w-full mt-6">
+              <Button onClick={handleStart} className="w-full mt-6">
                 Start Quiz
               </Button>
             </CardContent>
@@ -165,14 +345,45 @@ export function QuizContainer({ assignment, questions, shareLinkId }: QuizContai
     )
   }
 
+  if (loadingQuestions) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading questions...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <p className="text-gray-600">No questions available for this session.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-3xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">{assignment.title}</h1>
-          <p className="text-gray-600 mt-1">
-            {answeredCount} of {questions.length} answered
-          </p>
+        <div className="mb-8 space-y-4">
+          {sessions.length > 0 && (
+            <SessionProgressBar
+              sessions={sessions}
+              currentIndex={currentSessionIndex}
+            />
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{assignment.title}</h1>
+            <p className="text-gray-600 mt-1">
+              {answeredCount} of {questions.length} answered
+            </p>
+          </div>
         </div>
 
         {error && (

@@ -1,37 +1,29 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getLevelDisplayName, getLevelColor, Level } from '@/lib/grading/level-calculator'
-import { QuestionnaireForm } from './questionnaire-form'
+import { Session } from '@/lib/supabase/types'
 
 interface RedirectInfo {
   type: 'link' | 'embed'
   url?: string
+  embedCode?: string
 }
 
-interface QuestionnaireData {
-  id: string
-  title: string
-  description: string | null
-  is_enabled: boolean
-}
-
-interface QuestionnaireQuestionData {
-  id: string
-  type: 'text' | 'rating' | 'mcq'
-  prompt: string
-  options: { id: string; text: string }[] | { min: number; max: number } | null
-  is_required: boolean
-  order_index: number
+interface FeedbackSettings {
+  showCorrectAnswers: boolean
+  showAiFeedback: boolean
 }
 
 interface AttemptData {
   id: string
   assignment_id: string
+  session_id: string | null
+  journey_id: string | null
   status: string
   mcq_score: number
   mcq_total: number
@@ -46,6 +38,7 @@ interface AttemptData {
   assignment: {
     title: string
   }
+  session: Session | null
   answer: {
     id: string
     question_id: string
@@ -68,6 +61,17 @@ interface AttemptData {
   }[]
 }
 
+interface JourneyStatusResponse {
+  journey: {
+    id: string
+    current_session_index: number
+    overall_status: 'in_progress' | 'completed'
+  }
+  sessions: Session[]
+  currentSession: Session | null
+  totalSessions: number
+}
+
 export default function ResultsPage({
   params,
 }: {
@@ -76,12 +80,15 @@ export default function ResultsPage({
   const { attemptId } = use(params)
   const [attempt, setAttempt] = useState<AttemptData | null>(null)
   const [redirectInfo, setRedirectInfo] = useState<RedirectInfo | null>(null)
-  const [questionnaire, setQuestionnaire] = useState<QuestionnaireData | null>(null)
-  const router = useRouter()
-  const [questionnaireQuestions, setQuestionnaireQuestions] = useState<QuestionnaireQuestionData[]>([])
-  const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false)
+  const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettings>({
+    showCorrectAnswers: true,
+    showAiFeedback: true,
+  })
+  const [shareLinkToken, setShareLinkToken] = useState<string | null>(null)
+  const [journeyInfo, setJourneyInfo] = useState<JourneyStatusResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null
@@ -97,10 +104,20 @@ export default function ResultsPage({
 
         setAttempt(data.attempt)
         setRedirectInfo(data.redirectInfo)
-        setQuestionnaire(data.questionnaire)
-        setQuestionnaireQuestions(data.questionnaireQuestions || [])
-        setQuestionnaireSubmitted(data.questionnaireSubmitted)
+        setShareLinkToken(data.shareLinkToken || null)
+        setFeedbackSettings(data.feedbackSettings || {
+          showCorrectAnswers: true,
+          showAiFeedback: true,
+        })
         setLoading(false)
+
+        if (data.attempt.journey_id) {
+          const journeyResponse = await fetch(`/api/journey/${data.attempt.journey_id}`)
+          const journeyData = await journeyResponse.json()
+          if (journeyResponse.ok) {
+            setJourneyInfo(journeyData)
+          }
+        }
 
         // Stop polling if final
         if (data.attempt.is_final && intervalId) {
@@ -127,6 +144,25 @@ export default function ResultsPage({
       }
     }
   }, [attemptId])
+
+  const handleNextSession = async () => {
+    if (!attempt?.journey_id) return
+    const response = await fetch(`/api/journey/${attempt.journey_id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'advance' }),
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      setError(data.error || 'Failed to advance session')
+      return
+    }
+    if (shareLinkToken) {
+      router.push(`/quiz/${shareLinkToken}?journeyId=${attempt.journey_id}`)
+    } else {
+      router.refresh()
+    }
+  }
 
   if (loading) {
     return (
@@ -155,6 +191,10 @@ export default function ResultsPage({
     ? Math.round((attempt.total_score / attempt.max_score) * 100)
     : 0
 
+  const totalSessions = journeyInfo?.totalSessions ?? 0
+  const currentIndex = journeyInfo?.journey.current_session_index ?? 0
+  const hasNextSession = totalSessions > 0 && currentIndex < totalSessions - 1
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -164,7 +204,7 @@ export default function ResultsPage({
             <CardTitle>{attempt.assignment?.title || 'Quiz'} Results</CardTitle>
             <CardDescription>
               {attempt.is_final
-                ? 'Your final results are ready!'
+                ? 'Your results are ready!'
                 : 'Grading in progress...'}
             </CardDescription>
           </CardHeader>
@@ -175,6 +215,18 @@ export default function ResultsPage({
                 <span className="text-yellow-800">
                   AI is grading your open-ended answers...
                 </span>
+              </div>
+            )}
+
+            {/* Session info */}
+            {attempt.session && (
+              <div className="mb-4 text-sm text-gray-600">
+                Session: <span className="font-medium">{attempt.session.title}</span>
+                {totalSessions > 0 && (
+                  <span className="ml-2 text-gray-400">
+                    (Session {Math.min(currentIndex + 1, totalSessions)} of {totalSessions})
+                  </span>
+                )}
               </div>
             )}
 
@@ -227,26 +279,41 @@ export default function ResultsPage({
               )}
             </div>
 
-            {/* Redirect Button */}
+            {/* Redirect Content */}
             {attempt.is_final && redirectInfo && (
-              <div className="mt-8">
+              <div className="mt-8 space-y-4">
                 {redirectInfo.type === 'link' && redirectInfo.url ? (
                   <Button
                     className="w-full"
                     size="lg"
                     onClick={() => window.open(redirectInfo.url, '_blank')}
                   >
-                    Continue to Next Step
+                    Open Learning Content
                   </Button>
-                ) : redirectInfo.type === 'embed' ? (
+                ) : redirectInfo.type === 'embed' && redirectInfo.embedCode ? (
+                  <div className="border rounded-lg p-4 bg-white">
+                    <EmbedRenderer htmlContent={redirectInfo.embedCode} />
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* Next Session / Overall Results */}
+            {attempt.is_final && attempt.journey_id && journeyInfo && (
+              <div className="mt-6">
+                {hasNextSession ? (
+                  <Button className="w-full" size="lg" onClick={handleNextSession}>
+                    Continue to Next Session
+                  </Button>
+                ) : (
                   <Button
                     className="w-full"
                     size="lg"
-                    onClick={() => router.push(`/embed/${attemptId}`)}
+                    onClick={() => router.push(`/results/journey/${attempt.journey_id}`)}
                   >
-                    Continue to Learning Content
+                    View Overall Results
                   </Button>
-                ) : null}
+                )}
               </div>
             )}
           </CardContent>
@@ -296,7 +363,7 @@ export default function ResultsPage({
                   {ans.question?.type === 'mcq' && (
                     <p className="text-sm text-gray-600">
                       Your answer: {ans.selected_choice?.toUpperCase() || 'Not answered'}
-                      {ans.is_correct ? ' ✓' : ' ✗'}
+                      {ans.is_correct !== null && (ans.is_correct ? ' âœ“' : ' âœ—')}
                     </p>
                   )}
 
@@ -305,13 +372,13 @@ export default function ResultsPage({
                     <div className="text-sm text-gray-600">
                       <p>
                         Your answer: {ans.slider_value ?? 'Not answered'}
-                        {ans.is_correct ? ' ✓' : ' ✗'}
+                        {ans.is_correct !== null && (ans.is_correct ? ' âœ“' : ' âœ—')}
                       </p>
-                      {ans.question.slider_config && (
+                      {feedbackSettings.showCorrectAnswers && ans.question.slider_config && (
                         <p className="text-xs text-gray-400">
                           Correct: {ans.question.slider_config.correct_value}
                           {ans.question.slider_config.tolerance > 0 &&
-                            ` (±${ans.question.slider_config.tolerance})`}
+                            ` (Â±${ans.question.slider_config.tolerance})`}
                         </p>
                       )}
                     </div>
@@ -335,7 +402,7 @@ export default function ResultsPage({
                           </div>
                         ))}
                       </div>
-                      {ans.ai_feedback && (
+                      {ans.ai_feedback && feedbackSettings.showAiFeedback && (
                         <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded whitespace-pre-line">
                           Feedback: {ans.ai_feedback}
                         </p>
@@ -349,7 +416,7 @@ export default function ResultsPage({
                       <p className="text-sm text-gray-600">
                         Your answer: {ans.answer_text || 'Not answered'}
                       </p>
-                      {ans.ai_feedback && (
+                      {ans.ai_feedback && feedbackSettings.showAiFeedback && (
                         <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
                           Feedback: {ans.ai_feedback}
                         </p>
@@ -361,26 +428,52 @@ export default function ResultsPage({
             </CardContent>
           </Card>
         )}
-
-        {/* Questionnaire */}
-        {attempt.is_final && questionnaire && questionnaireQuestions.length > 0 && !questionnaireSubmitted && (
-          <QuestionnaireForm
-            questionnaire={questionnaire}
-            questions={questionnaireQuestions}
-            attemptId={attemptId}
-            onSubmitted={() => setQuestionnaireSubmitted(true)}
-          />
-        )}
-
-        {/* Thank you message after questionnaire submission */}
-        {attempt.is_final && questionnaireSubmitted && (
-          <Card>
-            <CardContent className="py-6 text-center">
-              <p className="text-green-600 font-medium">Thank you for your feedback!</p>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
+  )
+}
+
+function EmbedRenderer({ htmlContent }: { htmlContent: string }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    containerRef.current.innerHTML = ''
+
+    const temp = document.createElement('div')
+    temp.innerHTML = htmlContent
+
+    const scripts = temp.querySelectorAll('script')
+    const fragment = document.createDocumentFragment()
+
+    Array.from(temp.childNodes).forEach((node) => {
+      if (node.nodeName !== 'SCRIPT') {
+        fragment.appendChild(node.cloneNode(true))
+      }
+    })
+    containerRef.current.appendChild(fragment)
+
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement('script')
+      if (oldScript.src) {
+        newScript.src = oldScript.src
+      } else {
+        newScript.textContent = oldScript.textContent
+      }
+      Array.from(oldScript.attributes).forEach((attr) => {
+        if (attr.name !== 'src') {
+          newScript.setAttribute(attr.name, attr.value)
+        }
+      })
+      containerRef.current?.appendChild(newScript)
+    })
+  }, [htmlContent])
+
+  return (
+    <div
+      ref={containerRef}
+      className="embed-container min-h-[200px]"
+    />
   )
 }
