@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Slider } from '@/components/ui/slider'
 import { ImageUpload } from '@/components/ui/image-upload'
+import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,7 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
   const [prompt, setPrompt] = useState('')
   const [points, setPoints] = useState(1)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [hasCorrectAnswer, setHasCorrectAnswer] = useState(true)
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId)
 
@@ -83,6 +85,7 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
     setPrompt('')
     setPoints(1)
     setImageUrl(null)
+    setHasCorrectAnswer(true)
     setSelectedSessionId(null)
     setChoices([
       { id: 'a', text: '' },
@@ -121,6 +124,7 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
       type: questionType,
       prompt,
       points,
+      has_correct_answer: hasCorrectAnswer,
       order_index: getNextOrderIndex(selectedSessionId),
       image_url: imageUrl,
     }
@@ -132,21 +136,28 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
         setLoading(false)
         return
       }
-      if (allowMultipleCorrect) {
-        if (correctChoices.length < 2) {
-          setError('Please select at least 2 correct answers for multiple-answer questions')
-          setLoading(false)
-          return
+      if (hasCorrectAnswer) {
+        if (allowMultipleCorrect) {
+          if (correctChoices.length < 2) {
+            setError('Please select at least 2 correct answers for multiple-answer questions')
+            setLoading(false)
+            return
+          }
+          // Store as comma-separated values
+          questionData.correct_choice = correctChoices.join(',')
+        } else {
+          questionData.correct_choice = correctChoice
         }
-        // Store as comma-separated values
-        questionData.correct_choice = correctChoices.join(',')
-      } else {
-        questionData.correct_choice = correctChoice
       }
       questionData.choices = filledChoices
     } else if (questionType === 'open') {
-      questionData.reference_answer = referenceAnswer || null
-      questionData.rubric = rubric || null
+      if (hasCorrectAnswer) {
+        questionData.reference_answer = referenceAnswer || null
+        questionData.rubric = rubric || null
+      } else {
+        questionData.reference_answer = null
+        questionData.rubric = null
+      }
     } else if (questionType === 'slider') {
       // Validate slider config
       if (sliderMin >= sliderMax) {
@@ -154,23 +165,26 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
         setLoading(false)
         return
       }
-      if (sliderCorrectValue < sliderMin || sliderCorrectValue > sliderMax) {
-        setError('Correct value must be between min and max')
-        setLoading(false)
-        return
-      }
-      if (sliderTolerance < 0) {
-        setError('Tolerance must be 0 or greater')
-        setLoading(false)
-        return
+      if (hasCorrectAnswer) {
+        if (sliderCorrectValue < sliderMin || sliderCorrectValue > sliderMax) {
+          setError('Correct value must be between min and max')
+          setLoading(false)
+          return
+        }
+        if (sliderTolerance < 0) {
+          setError('Tolerance must be 0 or greater')
+          setLoading(false)
+          return
+        }
       }
 
+      const safeCorrectValue = Math.min(Math.max(sliderCorrectValue, sliderMin), sliderMax)
       const sliderConfig: SliderConfig = {
         min: sliderMin,
         max: sliderMax,
         step: sliderStep,
-        correct_value: sliderCorrectValue,
-        tolerance: sliderTolerance,
+        correct_value: hasCorrectAnswer ? sliderCorrectValue : safeCorrectValue,
+        tolerance: hasCorrectAnswer ? sliderTolerance : 0,
       }
       questionData.slider_config = sliderConfig
     }
@@ -248,7 +262,13 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
             <Label>Question Type</Label>
             <RadioGroup
               value={questionType}
-              onValueChange={(v) => setQuestionType(v as QuestionType)}
+              onValueChange={(v) => {
+                const nextType = v as QuestionType
+                setQuestionType(nextType)
+                if (nextType === 'image_map') {
+                  setHasCorrectAnswer(true)
+                }
+              }}
               className="flex flex-wrap gap-4"
             >
               <div className="flex items-center space-x-2">
@@ -295,29 +315,59 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
               onChange={(e) => setPoints(parseInt(e.target.value) || 1)}
               className="w-24"
             />
+            {!hasCorrectAnswer && (
+              <p className="text-sm text-gray-500">
+                This question won&apos;t be auto-graded or count toward the score.
+              </p>
+            )}
           </div>
+
+          {/* Has Correct Answer */}
+          {questionType !== 'image_map' && (
+            <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
+              <div className="space-y-0.5">
+                <Label htmlFor="has-correct-answer">Has Correct Answer</Label>
+                <p className="text-sm text-gray-500">
+                  Turn off to create a survey-style question.
+                </p>
+              </div>
+              <Switch
+                id="has-correct-answer"
+                checked={hasCorrectAnswer}
+                onCheckedChange={(checked) => {
+                  setHasCorrectAnswer(checked)
+                  if (!checked) {
+                    setAllowMultipleCorrect(false)
+                    setCorrectChoices([])
+                  }
+                }}
+              />
+            </div>
+          )}
 
           {/* MCQ Fields */}
           {questionType === 'mcq' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="allow-multiple"
-                  checked={allowMultipleCorrect}
-                  onCheckedChange={(checked) => {
-                    setAllowMultipleCorrect(checked === true)
-                    if (checked) {
-                      setCorrectChoices([])
-                    }
-                  }}
-                />
-                <Label htmlFor="allow-multiple" className="cursor-pointer">
-                  Allow multiple correct answers (students must select all)
-                </Label>
-              </div>
+              {hasCorrectAnswer && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="allow-multiple"
+                    checked={allowMultipleCorrect}
+                    onCheckedChange={(checked) => {
+                      setAllowMultipleCorrect(checked === true)
+                      if (checked) {
+                        setCorrectChoices([])
+                      }
+                    }}
+                  />
+                  <Label htmlFor="allow-multiple" className="cursor-pointer">
+                    Allow multiple correct answers (students must select all)
+                  </Label>
+                </div>
+              )}
 
               <Label>Answer Choices</Label>
-              {allowMultipleCorrect ? (
+              {hasCorrectAnswer && allowMultipleCorrect ? (
                 <div className="space-y-3">
                   {choices.map((choice) => (
                     <div key={choice.id} className="flex items-center gap-3">
@@ -347,7 +397,7 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
                     Check all the correct answers (minimum 2)
                   </p>
                 </div>
-              ) : (
+              ) : hasCorrectAnswer ? (
                 <>
                   <RadioGroup
                     value={correctChoice}
@@ -376,6 +426,23 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
                     Select the radio button next to the correct answer
                   </p>
                 </>
+              ) : (
+                <div className="space-y-3">
+                  {choices.map((choice) => (
+                    <div key={choice.id} className="flex items-center gap-3">
+                      <Label className="w-6">{choice.id.toUpperCase()})</Label>
+                      <Input
+                        placeholder={`Option ${choice.id.toUpperCase()}`}
+                        value={choice.text}
+                        onChange={(e) => updateChoice(choice.id, e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                  ))}
+                  <p className="text-sm text-gray-500">
+                    No correct answer will be stored for this question.
+                  </p>
+                </div>
               )}
             </div>
           )}
@@ -383,29 +450,37 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
           {/* Open Answer Fields */}
           {questionType === 'open' && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="reference">Reference Answer (optional)</Label>
-                <Textarea
-                  id="reference"
-                  placeholder="The ideal answer for comparison..."
-                  value={referenceAnswer}
-                  onChange={(e) => setReferenceAnswer(e.target.value)}
-                  rows={3}
-                />
+              {hasCorrectAnswer ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="reference">Reference Answer (optional)</Label>
+                    <Textarea
+                      id="reference"
+                      placeholder="The ideal answer for comparison..."
+                      value={referenceAnswer}
+                      onChange={(e) => setReferenceAnswer(e.target.value)}
+                      rows={3}
+                    />
+                    <p className="text-sm text-gray-500">
+                      Helps AI grade more accurately
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rubric">Grading Rubric (optional)</Label>
+                    <Textarea
+                      id="rubric"
+                      placeholder="e.g., Must mention X, Y, Z concepts..."
+                      value={rubric}
+                      onChange={(e) => setRubric(e.target.value)}
+                      rows={2}
+                    />
+                  </div>
+                </>
+              ) : (
                 <p className="text-sm text-gray-500">
-                  Helps AI grade more accurately
+                  This open-ended question won&apos;t be auto-graded.
                 </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="rubric">Grading Rubric (optional)</Label>
-                <Textarea
-                  id="rubric"
-                  placeholder="e.g., Must mention X, Y, Z concepts..."
-                  value={rubric}
-                  onChange={(e) => setRubric(e.target.value)}
-                  rows={2}
-                />
-              </div>
+              )}
             </div>
           )}
 
@@ -444,29 +519,37 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
                     onChange={(e) => setSliderStep(parseFloat(e.target.value) || 1)}
                   />
                 </div>
+                {hasCorrectAnswer && (
+                  <div className="space-y-2">
+                    <Label htmlFor="sliderTolerance">Tolerance (+/-)</Label>
+                    <Input
+                      id="sliderTolerance"
+                      type="number"
+                      min={0}
+                      value={sliderTolerance}
+                      onChange={(e) => setSliderTolerance(parseFloat(e.target.value) || 0)}
+                    />
+                    <p className="text-sm text-gray-500">
+                      Answer is correct if within +/- this value
+                    </p>
+                  </div>
+                )}
+              </div>
+              {hasCorrectAnswer ? (
                 <div className="space-y-2">
-                  <Label htmlFor="sliderTolerance">Tolerance (±)</Label>
+                  <Label htmlFor="sliderCorrect">Correct Value</Label>
                   <Input
-                    id="sliderTolerance"
+                    id="sliderCorrect"
                     type="number"
-                    min={0}
-                    value={sliderTolerance}
-                    onChange={(e) => setSliderTolerance(parseFloat(e.target.value) || 0)}
+                    value={sliderCorrectValue}
+                    onChange={(e) => setSliderCorrectValue(parseFloat(e.target.value) || 0)}
                   />
-                  <p className="text-sm text-gray-500">
-                    Answer is correct if within ± this value
-                  </p>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sliderCorrect">Correct Value</Label>
-                <Input
-                  id="sliderCorrect"
-                  type="number"
-                  value={sliderCorrectValue}
-                  onChange={(e) => setSliderCorrectValue(parseFloat(e.target.value) || 0)}
-                />
-              </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  Correct value is not required for ungraded slider questions.
+                </p>
+              )}
               {/* Preview */}
               <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
                 <Label>Preview</Label>
@@ -523,3 +606,5 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
     </Dialog>
   )
 }
+
+

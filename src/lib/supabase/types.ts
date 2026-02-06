@@ -189,6 +189,7 @@ export interface Database {
           prompt: string
           choices: { id: string; text: string }[] | null
           correct_choice: string | null
+          has_correct_answer: boolean
           reference_answer: string | null
           rubric: string | null
           points: number
@@ -206,6 +207,7 @@ export interface Database {
           prompt: string
           choices?: { id: string; text: string }[] | null
           correct_choice?: string | null
+          has_correct_answer?: boolean
           reference_answer?: string | null
           rubric?: string | null
           points?: number
@@ -223,6 +225,7 @@ export interface Database {
           prompt?: string
           choices?: { id: string; text: string }[] | null
           correct_choice?: string | null
+          has_correct_answer?: boolean
           reference_answer?: string | null
           rubric?: string | null
           points?: number

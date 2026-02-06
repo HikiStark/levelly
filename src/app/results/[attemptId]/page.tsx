@@ -54,6 +54,7 @@ interface AttemptData {
       type: string
       points: number
       order_index: number
+      has_correct_answer: boolean
       slider_config: { min: number; max: number; correct_value: number; tolerance: number } | null
       image_map_config: { base_image_url: string; flags: { id: string; label: string; answer_type: string; points: number }[] } | null
       image_url: string | null
@@ -92,13 +93,22 @@ export default function ResultsPage({
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null
+    const initialNotFoundGraceMs = 15000
+    const startedAt = Date.now()
 
     const fetchAttempt = async () => {
       try {
-        const response = await fetch(`/api/attempts/${attemptId}`)
+        const response = await fetch(`/api/attempts/${attemptId}`, { cache: 'no-store' })
         const data = await response.json()
 
         if (!response.ok) {
+          if (
+            response.status === 404 &&
+            data.error === 'Attempt not found' &&
+            Date.now() - startedAt < initialNotFoundGraceMs
+          ) {
+            return
+          }
           throw new Error(data.error || 'Failed to fetch results')
         }
 
@@ -124,7 +134,16 @@ export default function ResultsPage({
           clearInterval(intervalId)
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load results')
+        const message = err instanceof Error ? err.message : 'Failed to load results'
+        const isTransientNotFound =
+          message === 'Attempt not found' &&
+          Date.now() - startedAt < initialNotFoundGraceMs
+
+        if (isTransientNotFound) {
+          return
+        }
+
+        setError(message)
         setLoading(false)
         if (intervalId) {
           clearInterval(intervalId)
@@ -346,24 +365,29 @@ export default function ResultsPage({
                     <p className="font-medium text-sm">
                       Q{index + 1}: {ans.question?.prompt}
                     </p>
-                    <Badge
-                      variant={
-                        ans.score === ans.question?.points
-                          ? 'default'
-                          : ans.score && ans.score > 0
-                          ? 'secondary'
-                          : 'destructive'
-                      }
-                    >
-                      {ans.score ?? 0}/{ans.question?.points}
-                    </Badge>
+                    {ans.question?.has_correct_answer === false ? (
+                      <Badge variant="secondary">Ungraded</Badge>
+                    ) : (
+                      <Badge
+                        variant={
+                          ans.score === ans.question?.points
+                            ? 'default'
+                            : ans.score && ans.score > 0
+                            ? 'secondary'
+                            : 'destructive'
+                        }
+                      >
+                        {ans.score ?? 0}/{ans.question?.points}
+                      </Badge>
+                    )}
                   </div>
 
                   {/* MCQ Answer */}
                   {ans.question?.type === 'mcq' && (
                     <p className="text-sm text-gray-600">
                       Your answer: {ans.selected_choice?.toUpperCase() || 'Not answered'}
-                      {ans.is_correct !== null && (ans.is_correct ? ' âœ“' : ' âœ—')}
+                      {ans.question?.has_correct_answer !== false && ans.is_correct !== null &&
+                        (ans.is_correct ? ' (Correct)' : ' (Incorrect)')}
                     </p>
                   )}
 
@@ -372,13 +396,14 @@ export default function ResultsPage({
                     <div className="text-sm text-gray-600">
                       <p>
                         Your answer: {ans.slider_value ?? 'Not answered'}
-                        {ans.is_correct !== null && (ans.is_correct ? ' âœ“' : ' âœ—')}
+                        {ans.question?.has_correct_answer !== false && ans.is_correct !== null &&
+                          (ans.is_correct ? ' (Correct)' : ' (Incorrect)')}
                       </p>
-                      {feedbackSettings.showCorrectAnswers && ans.question.slider_config && (
+                      {feedbackSettings.showCorrectAnswers && ans.question.has_correct_answer !== false && ans.question.slider_config && (
                         <p className="text-xs text-gray-400">
                           Correct: {ans.question.slider_config.correct_value}
                           {ans.question.slider_config.tolerance > 0 &&
-                            ` (Â±${ans.question.slider_config.tolerance})`}
+                            ` (+/-${ans.question.slider_config.tolerance})`}
                         </p>
                       )}
                     </div>

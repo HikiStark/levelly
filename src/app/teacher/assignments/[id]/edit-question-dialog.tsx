@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Slider } from '@/components/ui/slider'
 import { ImageUpload } from '@/components/ui/image-upload'
+import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
   const [imageUrl, setImageUrl] = useState<string | null>(question.image_url)
   const [referenceAnswer, setReferenceAnswer] = useState(question.reference_answer || '')
   const [rubric, setRubric] = useState(question.rubric || '')
+  const [hasCorrectAnswer, setHasCorrectAnswer] = useState(question.has_correct_answer ?? true)
   const [sessions, setSessions] = useState<Session[]>([])
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -80,6 +82,7 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
     setImageUrl(question.image_url)
     setReferenceAnswer(question.reference_answer || '')
     setRubric(question.rubric || '')
+    setHasCorrectAnswer(question.has_correct_answer ?? true)
     setError(null)
 
     if (question.type === 'mcq') {
@@ -136,6 +139,7 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
       prompt,
       points,
       session_id: sessionId,
+      has_correct_answer: hasCorrectAnswer,
       order_index: shouldMoveOrder ? getNextOrderIndex(sessionId) : question.order_index,
     }
 
@@ -144,8 +148,13 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
     }
 
     if (question.type === 'open') {
-      updateData.reference_answer = referenceAnswer || null
-      updateData.rubric = rubric || null
+      if (hasCorrectAnswer) {
+        updateData.reference_answer = referenceAnswer || null
+        updateData.rubric = rubric || null
+      } else {
+        updateData.reference_answer = null
+        updateData.rubric = null
+      }
     }
 
     if (question.type === 'mcq') {
@@ -156,15 +165,19 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
         return
       }
       updateData.choices = filledChoices
-      if (allowMultipleCorrect) {
-        if (correctChoices.length < 2) {
-          setError('Select at least 2 correct choices.')
-          setSaving(false)
-          return
+      if (hasCorrectAnswer) {
+        if (allowMultipleCorrect) {
+          if (correctChoices.length < 2) {
+            setError('Select at least 2 correct choices.')
+            setSaving(false)
+            return
+          }
+          updateData.correct_choice = correctChoices.join(',')
+        } else {
+          updateData.correct_choice = correctChoice
         }
-        updateData.correct_choice = correctChoices.join(',')
       } else {
-        updateData.correct_choice = correctChoice
+        updateData.correct_choice = null
       }
     }
 
@@ -174,17 +187,24 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
         setSaving(false)
         return
       }
-      if (sliderCorrectValue < sliderMin || sliderCorrectValue > sliderMax) {
-        setError('Correct value must be within slider range.')
-        setSaving(false)
-        return
+      if (hasCorrectAnswer) {
+        if (sliderCorrectValue < sliderMin || sliderCorrectValue > sliderMax) {
+          setError('Correct value must be within slider range.')
+          setSaving(false)
+          return
+        }
+        if (sliderTolerance < 0) {
+          setError('Tolerance must be 0 or greater.')
+          setSaving(false)
+          return
+        }
       }
-      if (sliderTolerance < 0) {
-        setError('Tolerance must be 0 or greater.')
-        setSaving(false)
-        return
+      const safeCorrectValue = Math.min(Math.max(sliderCorrectValue, sliderMin), sliderMax)
+      updateData.slider_config = {
+        ...sliderConfig,
+        correct_value: hasCorrectAnswer ? sliderCorrectValue : safeCorrectValue,
+        tolerance: hasCorrectAnswer ? sliderTolerance : 0,
       }
-      updateData.slider_config = sliderConfig
     }
 
     const { error: updateError } = await supabase
@@ -264,7 +284,34 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
               onChange={(e) => setPoints(parseInt(e.target.value, 10) || 1)}
               className="w-24"
             />
+            {!hasCorrectAnswer && (
+              <p className="text-sm text-gray-500">
+                This question won&apos;t be auto-graded or count toward the score.
+              </p>
+            )}
           </div>
+
+          {question.type !== 'image_map' && (
+            <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
+              <div className="space-y-0.5">
+                <Label htmlFor={`edit-has-correct-${question.id}`}>Has Correct Answer</Label>
+                <p className="text-sm text-gray-500">
+                  Turn off to create a survey-style question.
+                </p>
+              </div>
+              <Switch
+                id={`edit-has-correct-${question.id}`}
+                checked={hasCorrectAnswer}
+                onCheckedChange={(checked) => {
+                  setHasCorrectAnswer(checked)
+                  if (!checked) {
+                    setAllowMultipleCorrect(false)
+                    setCorrectChoices([])
+                  }
+                }}
+              />
+            </div>
+          )}
 
           {question.type !== 'image_map' && (
             <div className="space-y-2">
@@ -275,15 +322,17 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
 
           {question.type === 'mcq' && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id={`edit-multi-${question.id}`}
-                  checked={allowMultipleCorrect}
-                  onCheckedChange={(checked) => setAllowMultipleCorrect(checked === true)}
-                />
-                <Label htmlFor={`edit-multi-${question.id}`}>Allow multiple correct answers</Label>
-              </div>
-              {allowMultipleCorrect ? (
+              {hasCorrectAnswer && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`edit-multi-${question.id}`}
+                    checked={allowMultipleCorrect}
+                    onCheckedChange={(checked) => setAllowMultipleCorrect(checked === true)}
+                  />
+                  <Label htmlFor={`edit-multi-${question.id}`}>Allow multiple correct answers</Label>
+                </div>
+              )}
+              {hasCorrectAnswer && allowMultipleCorrect ? (
                 <>
                   {choices.map((choice) => (
                     <div key={choice.id} className="flex items-center gap-3">
@@ -310,7 +359,7 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
                     </div>
                   ))}
                 </>
-              ) : (
+              ) : hasCorrectAnswer ? (
                 <RadioGroup value={correctChoice} onValueChange={setCorrectChoice} className="space-y-2">
                   {choices.map((choice) => (
                     <div key={choice.id} className="flex items-center gap-3">
@@ -327,30 +376,57 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
                     </div>
                   ))}
                 </RadioGroup>
+              ) : (
+                <div className="space-y-2">
+                  {choices.map((choice) => (
+                    <div key={choice.id} className="flex items-center gap-3">
+                      <Label className="w-6">
+                        {choice.id.toUpperCase()})
+                      </Label>
+                      <Input
+                        value={choice.text}
+                        onChange={(e) =>
+                          setChoices(choices.map(c => (c.id === choice.id ? { ...c, text: e.target.value } : c)))
+                        }
+                      />
+                    </div>
+                  ))}
+                  <p className="text-sm text-gray-500">
+                    No correct answer will be stored for this question.
+                  </p>
+                </div>
               )}
             </div>
           )}
 
           {question.type === 'open' && (
             <div className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor={`edit-reference-${question.id}`}>Reference Answer</Label>
-                <Textarea
-                  id={`edit-reference-${question.id}`}
-                  value={referenceAnswer}
-                  onChange={(e) => setReferenceAnswer(e.target.value)}
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor={`edit-rubric-${question.id}`}>Rubric</Label>
-                <Textarea
-                  id={`edit-rubric-${question.id}`}
-                  value={rubric}
-                  onChange={(e) => setRubric(e.target.value)}
-                  rows={2}
-                />
-              </div>
+              {hasCorrectAnswer ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor={`edit-reference-${question.id}`}>Reference Answer</Label>
+                    <Textarea
+                      id={`edit-reference-${question.id}`}
+                      value={referenceAnswer}
+                      onChange={(e) => setReferenceAnswer(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`edit-rubric-${question.id}`}>Rubric</Label>
+                    <Textarea
+                      id={`edit-rubric-${question.id}`}
+                      value={rubric}
+                      onChange={(e) => setRubric(e.target.value)}
+                      rows={2}
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  This open-ended question won&apos;t be auto-graded.
+                </p>
+              )}
             </div>
           )}
 
@@ -369,15 +445,23 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
                   <Label>Step</Label>
                   <Input type="number" value={sliderStep} onChange={(e) => setSliderStep(parseFloat(e.target.value) || 1)} />
                 </div>
+                {hasCorrectAnswer && (
+                  <div className="space-y-1">
+                    <Label>Tolerance (+/-)</Label>
+                    <Input type="number" value={sliderTolerance} onChange={(e) => setSliderTolerance(parseFloat(e.target.value) || 0)} />
+                  </div>
+                )}
+              </div>
+              {hasCorrectAnswer ? (
                 <div className="space-y-1">
-                  <Label>Tolerance</Label>
-                  <Input type="number" value={sliderTolerance} onChange={(e) => setSliderTolerance(parseFloat(e.target.value) || 0)} />
+                  <Label>Correct Value</Label>
+                  <Input type="number" value={sliderCorrectValue} onChange={(e) => setSliderCorrectValue(parseFloat(e.target.value) || 0)} />
                 </div>
-              </div>
-              <div className="space-y-1">
-                <Label>Correct Value</Label>
-                <Input type="number" value={sliderCorrectValue} onChange={(e) => setSliderCorrectValue(parseFloat(e.target.value) || 0)} />
-              </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  Correct value is not required for ungraded slider questions.
+                </p>
+              )}
               <Slider
                 min={sliderMin}
                 max={sliderMax}

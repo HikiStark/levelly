@@ -135,11 +135,14 @@ export async function regradeAttempt(attemptId: string): Promise<{
   }
 
   const typedQuestions = questions as unknown as Question[]
-  const openQuestions = typedQuestions.filter((q) => q.type === 'open')
+  const openQuestions = typedQuestions.filter((q) => q.type === 'open' && q.has_correct_answer !== false)
   const answers = (attempt.answer || []) as Answer[]
 
   // Calculate max scores
-  const maxScore = typedQuestions.reduce((sum, q) => sum + q.points, 0)
+  const maxScore = typedQuestions.reduce(
+    (sum, q) => sum + (q.has_correct_answer === false ? 0 : q.points),
+    0
+  )
   const openTotal = openQuestions.reduce((sum, q) => sum + q.points, 0)
 
   // Reset attempt to grading state
@@ -176,7 +179,7 @@ export async function regradeAttempt(attemptId: string): Promise<{
   let mcqTotal = 0
 
   for (const question of typedQuestions) {
-    if (question.type !== 'mcq') continue
+    if (question.type !== 'mcq' || question.has_correct_answer === false) continue
 
     const answer = answers.find((a) => a.question_id === question.id)
     const result = gradeMCQ(question, answer?.selected_choice ?? null)

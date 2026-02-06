@@ -133,6 +133,9 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
                     <span className="text-sm text-gray-400">
                       {question.points} point{question.points !== 1 ? 's' : ''}
                     </span>
+                    {question.has_correct_answer === false && (
+                      <Badge variant="secondary">Ungraded</Badge>
+                    )}
                     <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded">
                       {getSessionLabel(question.session_id)}
                     </span>
@@ -192,10 +195,12 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
                         <span className="font-medium">Range:</span> {sliderConfig.min} - {sliderConfig.max}
                         {sliderConfig.step !== 1 ? ` (step: ${sliderConfig.step})` : ''}
                       </p>
-                      <p>
-                        <span className="font-medium">Correct:</span> {sliderConfig.correct_value}
-                        {sliderConfig.tolerance > 0 ? ` (+/-${sliderConfig.tolerance})` : ''}
-                      </p>
+                      {question.has_correct_answer !== false && (
+                        <p>
+                          <span className="font-medium">Correct:</span> {sliderConfig.correct_value}
+                          {sliderConfig.tolerance > 0 ? ` (+/-${sliderConfig.tolerance})` : ''}
+                        </p>
+                      )}
                     </div>
                   )}
 

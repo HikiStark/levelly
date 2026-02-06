@@ -51,8 +51,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 px-4 py-8 sm:flex sm:items-center sm:justify-center">
+      <Card className="mx-auto w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <CardHeader>
           <CardTitle>Welcome back</CardTitle>
           <CardDescription>Sign in to your teacher account</CardDescription>

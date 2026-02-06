@@ -171,8 +171,9 @@ export default async function SubmissionDetailPage({
             if (!question) return null
 
             const isMcq = question.type === 'mcq'
-            const isCorrect = isMcq ? answer.is_correct : (answer.score === question.points)
-            const isPartial = !isMcq && answer.score !== null && answer.score > 0 && answer.score < question.points
+            const isUngraded = question.has_correct_answer === false
+            const isCorrect = !isUngraded && (isMcq ? answer.is_correct : (answer.score === question.points))
+            const isPartial = !isUngraded && !isMcq && answer.score !== null && answer.score > 0 && answer.score < question.points
 
             return (
               <div
@@ -194,11 +195,15 @@ export default async function SubmissionDetailPage({
                       Q{index + 1}: {question.prompt}
                     </p>
                   </div>
-                  <Badge
-                    variant={isCorrect ? 'default' : isPartial ? 'secondary' : 'destructive'}
-                  >
-                    {answer.score ?? 0}/{question.points}
-                  </Badge>
+                  {isUngraded ? (
+                    <Badge variant="secondary">Ungraded</Badge>
+                  ) : (
+                    <Badge
+                      variant={isCorrect ? 'default' : isPartial ? 'secondary' : 'destructive'}
+                    >
+                      {answer.score ?? 0}/{question.points}
+                    </Badge>
+                  )}
                 </div>
 
                 {/* MCQ Answer */}
@@ -209,13 +214,15 @@ export default async function SubmissionDetailPage({
                       <div className="space-y-1">
                         {question.choices.map((choice: { id: string; text: string }) => {
                           const isSelected = answer.selected_choice === choice.id
-                          const isCorrectChoice = question.correct_choice === choice.id
+                          const isCorrectChoice = !isUngraded && question.correct_choice === choice.id
 
                           return (
                             <div
                               key={choice.id}
                               className={`p-2 rounded text-sm flex items-center gap-2 ${
-                                isSelected && isCorrectChoice
+                                isUngraded
+                                  ? 'bg-gray-50'
+                                  : isSelected && isCorrectChoice
                                   ? 'bg-green-50 border border-green-200'
                                   : isSelected && !isCorrectChoice
                                   ? 'bg-red-50 border border-red-200'
@@ -226,13 +233,13 @@ export default async function SubmissionDetailPage({
                             >
                               <span className="font-medium uppercase">{choice.id}.</span>
                               <span className="flex-1">{choice.text}</span>
-                              {isSelected && (
+                              {!isUngraded && isSelected && (
                                 <span className={isCorrectChoice ? 'text-green-600' : 'text-red-600'}>
-                                  {isCorrectChoice ? '✓ Student answer (Correct)' : '✗ Student answer'}
+                                  {isCorrectChoice ? 'Student answer (Correct)' : 'Student answer'}
                                 </span>
                               )}
-                              {!isSelected && isCorrectChoice && (
-                                <span className="text-green-600">✓ Correct answer</span>
+                              {!isUngraded && !isSelected && isCorrectChoice && (
+                                <span className="text-green-600">Correct answer</span>
                               )}
                             </div>
                           )
@@ -289,7 +296,7 @@ export default async function SubmissionDetailPage({
                     )}
 
                     {/* Still grading indicator */}
-                    {!attempt.is_final && answer.score === null && (
+                    {!isUngraded && !attempt.is_final && answer.score === null && (
                       <div className="flex items-center gap-2 text-sm text-yellow-700">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
                         <span>AI grading in progress...</span>
@@ -309,3 +316,4 @@ export default async function SubmissionDetailPage({
     </div>
   )
 }
+

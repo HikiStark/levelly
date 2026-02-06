@@ -269,9 +269,9 @@ export async function POST(request: NextRequest) {
     const typedQuestions = questions as unknown as Question[]
 
     // Find questions that need background AI grading
-    const openQuestions = typedQuestions.filter((q) => q.type === 'open')
+    const openQuestions = typedQuestions.filter((q) => q.type === 'open' && q.has_correct_answer !== false)
     const imageMapQuestionsWithText = typedQuestions.filter((q) => {
-      if (q.type !== 'image_map' || !q.image_map_config) return false
+      if (q.type !== 'image_map' || !q.image_map_config || q.has_correct_answer === false) return false
       const config = q.image_map_config as { flags: { answer_type: string }[] }
       return config.flags.some(f => f.answer_type === 'text')
     })
@@ -314,7 +314,10 @@ export async function POST(request: NextRequest) {
     let immediateTotal = 0
 
     // Calculate max scores
-    const maxScore = typedQuestions.reduce((sum, q) => sum + q.points, 0)
+    const maxScore = typedQuestions.reduce(
+      (sum, q) => sum + (q.has_correct_answer === false ? 0 : q.points),
+      0
+    )
 
     // Calculate pending total (open questions + image-map text flags)
     let pendingTotal = openQuestions.reduce((sum, q) => sum + q.points, 0)
@@ -330,6 +333,44 @@ export async function POST(request: NextRequest) {
 
     for (const question of typedQuestions) {
       const answer = answers.find((a) => a.questionId === question.id)
+      const isGradable = question.has_correct_answer !== false
+
+      if (!isGradable) {
+        if (question.type === 'mcq') {
+          answerInserts.push({
+            attempt_id: attemptId,
+            question_id: question.id,
+            selected_choice: answer?.selectedChoice ?? null,
+            is_correct: null,
+            score: null,
+          })
+        } else if (question.type === 'slider') {
+          answerInserts.push({
+            attempt_id: attemptId,
+            question_id: question.id,
+            slider_value: answer?.sliderValue ?? null,
+            is_correct: null,
+            score: null,
+          })
+        } else if (question.type === 'image_map') {
+          const imageMapAnswers = answer?.imageMapAnswers ?? null
+          answerInserts.push({
+            attempt_id: attemptId,
+            question_id: question.id,
+            image_map_answers: imageMapAnswers,
+            is_correct: null,
+            score: null,
+          })
+        } else {
+          answerInserts.push({
+            attempt_id: attemptId,
+            question_id: question.id,
+            answer_text: answer?.answerText ?? null,
+            score: null,
+          })
+        }
+        continue
+      }
 
       if (question.type === 'mcq') {
         const result = gradeMCQ(question, answer?.selectedChoice ?? null)

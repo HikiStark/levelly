@@ -35,6 +35,7 @@ interface AttemptWithRelations extends Attempt {
       points: number
       order_index: number
       correct_choice: string | null
+      has_correct_answer: boolean
       reference_answer: string | null
       slider_config: { min: number; max: number; correct_value: number; tolerance: number } | null
       image_map_config: { base_image_url: string; flags: { id: string; label: string; answer_type: string; points: number }[] } | null
@@ -51,29 +52,65 @@ export async function GET(
     const { id } = await params
     const supabase = await createClient()
 
-    const { data, error } = await supabase
+    const { data: attemptRow, error } = await supabase
       .from('attempt')
-      .select(`
-        *,
-        assignment(title, show_correct_answers, show_ai_feedback),
-        share_link(token),
-        session(id, title, order_index),
-        answer(
-          *,
-          question(prompt, type, points, order_index, correct_choice, reference_answer, slider_config, image_map_config, image_url)
-        )
-      `)
+      .select('*')
       .eq('id', id)
-      .single()
+      .maybeSingle()
 
-    if (error || !data) {
+    if (error || !attemptRow) {
       return NextResponse.json(
         { error: 'Attempt not found' },
         { status: 404 }
       )
     }
 
-    const attempt = data as unknown as AttemptWithRelations
+    const attemptBase = attemptRow as unknown as Attempt
+
+    const answersQuery = supabase
+      .from('answer')
+      .select(`
+        *,
+        question(prompt, type, points, order_index, correct_choice, has_correct_answer, reference_answer, slider_config, image_map_config, image_url)
+      `)
+      .eq('attempt_id', attemptBase.id)
+
+    const assignmentQuery = supabase
+      .from('assignment')
+      .select('title, show_correct_answers, show_ai_feedback')
+      .eq('id', attemptBase.assignment_id)
+      .maybeSingle()
+
+    const shareLinkQuery = attemptBase.share_link_id
+      ? supabase
+          .from('share_link')
+          .select('token')
+          .eq('id', attemptBase.share_link_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null })
+
+    const sessionQuery = attemptBase.session_id
+      ? supabase
+          .from('session')
+          .select('id, title, order_index')
+          .eq('id', attemptBase.session_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null })
+
+    const [{ data: answers }, { data: assignment }, { data: shareLink }, { data: session }] = await Promise.all([
+      answersQuery,
+      assignmentQuery,
+      shareLinkQuery,
+      sessionQuery,
+    ])
+
+    const attempt = {
+      ...attemptBase,
+      assignment: assignment || null,
+      share_link: shareLink || null,
+      session: session || null,
+      answer: (answers || []) as AttemptWithRelations['answer'],
+    } as AttemptWithRelations
 
     // Get redirect info if final
     let redirectInfo: { type: 'link' | 'embed'; url?: string; embedCode?: string } | null = null
