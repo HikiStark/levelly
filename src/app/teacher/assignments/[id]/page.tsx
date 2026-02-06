@@ -4,9 +4,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { QuestionList } from './question-list'
-import { AddQuestionDialog } from './add-question-dialog'
-import { ImageMapEditor } from './image-map-editor'
+import { QuestionsSection } from './questions-section'
 import { ShareLinkSection } from './share-link-section'
 import { LevelRedirectSection } from './level-redirect-section'
 import { PublishButton } from './publish-button'
@@ -90,22 +88,12 @@ export default async function AssignmentPage({
           <div>
             <CardTitle>Questions</CardTitle>
             <CardDescription>
-              Add MCQ, open-ended, slider, or image map questions
+              Add MCQ, open-ended, slider, or image map questions by session
             </CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <AddQuestionDialog
-              assignmentId={id}
-              questions={questions || []}
-            />
-            <ImageMapEditor
-              assignmentId={id}
-              questions={questions || []}
-            />
           </div>
         </CardHeader>
         <CardContent>
-          <QuestionList questions={questions || []} assignmentId={id} />
+          <QuestionsSection questions={questions || []} assignmentId={id} />
         </CardContent>
       </Card>
 

@@ -24,16 +24,17 @@ import { Question, QuestionType, Session, SliderConfig } from '@/lib/supabase/ty
 interface AddQuestionDialogProps {
   assignmentId: string
   questions: Question[]
+  initialSessionId?: string | null
 }
 
-export function AddQuestionDialog({ assignmentId, questions }: AddQuestionDialogProps) {
+export function AddQuestionDialog({ assignmentId, questions, initialSessionId = null }: AddQuestionDialogProps) {
   const [open, setOpen] = useState(false)
   const [questionType, setQuestionType] = useState<QuestionType>('mcq')
   const [prompt, setPrompt] = useState('')
   const [points, setPoints] = useState(1)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId)
 
   // MCQ fields
   const [choices, setChoices] = useState([
@@ -196,7 +197,15 @@ export function AddQuestionDialog({ assignmentId, questions }: AddQuestionDialog
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (nextOpen) {
+          setSelectedSessionId(initialSessionId)
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button>Add Question</Button>
       </DialogTrigger>

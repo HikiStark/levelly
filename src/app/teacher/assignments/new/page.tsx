@@ -58,6 +58,21 @@ export default function NewAssignmentPage() {
       return
     }
 
+    const { error: sessionError } = await supabase
+      .from('session')
+      .insert({
+        assignment_id: assignment.id,
+        title: 'Session 1',
+        description: 'Default starting session',
+        order_index: 0,
+      })
+
+    if (sessionError) {
+      setError(`Quiz created, but failed to create default session: ${sessionError.message}`)
+      setLoading(false)
+      return
+    }
+
     router.push(`/teacher/assignments/${assignment.id}`)
   }
 

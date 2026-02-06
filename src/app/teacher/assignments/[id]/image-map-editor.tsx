@@ -19,11 +19,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { ImageMapFlag, ImageMapConfig, SliderConfig, Question, Session } from '@/lib/supabase/types'
-import { MapPin, Trash2, Settings, Plus } from 'lucide-react'
+import { MapPin, Trash2, Settings } from 'lucide-react'
 
 interface ImageMapEditorProps {
   assignmentId: string
   questions: Question[]
+  initialSessionId?: string | null
 }
 
 interface FlagFormData {
@@ -59,7 +60,7 @@ const defaultFlagForm: FlagFormData = {
   points: 1,
 }
 
-export function ImageMapEditor({ assignmentId, questions }: ImageMapEditorProps) {
+export function ImageMapEditor({ assignmentId, questions, initialSessionId = null }: ImageMapEditorProps) {
   const [open, setOpen] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [baseImageUrl, setBaseImageUrl] = useState<string | null>(null)
@@ -69,7 +70,7 @@ export function ImageMapEditor({ assignmentId, questions }: ImageMapEditorProps)
   const [flagForm, setFlagForm] = useState<FlagFormData>({ ...defaultFlagForm })
   const [editingFlagId, setEditingFlagId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -321,7 +322,15 @@ export function ImageMapEditor({ assignmentId, questions }: ImageMapEditorProps)
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (nextOpen) {
+          setSelectedSessionId(initialSessionId)
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="outline">
           <MapPin className="mr-2 h-4 w-4" />

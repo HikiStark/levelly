@@ -69,6 +69,7 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
           embedCode: r.embed_code || '',
         }
       })
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setConfigs(configMap)
   }, [redirects, selectedSessionId])
 
