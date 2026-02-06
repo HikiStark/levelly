@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
@@ -21,6 +22,7 @@ export default function EmbedPage({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const t = useTranslations('embed')
 
   useEffect(() => {
     const fetchEmbed = async () => {
@@ -29,13 +31,13 @@ export default function EmbedPage({
         const result = await response.json()
 
         if (!response.ok) {
-          throw new Error(result.error || 'Failed to fetch embed content')
+          throw new Error(result.error || t('notFound'))
         }
 
         setData(result)
         setLoading(false)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load content')
+        setError(err instanceof Error ? err.message : t('notFound'))
         setLoading(false)
       }
     }
@@ -48,7 +50,7 @@ export default function EmbedPage({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading content...</p>
+          <p className="text-gray-600">{t('loading')}</p>
         </div>
       </div>
     )
@@ -59,12 +61,12 @@ export default function EmbedPage({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6">
-            <p className="text-red-600">{error || 'Content not found'}</p>
+            <p className="text-red-600">{error || t('notFound')}</p>
             <Button
               className="mt-4"
               onClick={() => router.push(`/results/${attemptId}`)}
             >
-              Back to Results
+              {t('backToResults')}
             </Button>
           </CardContent>
         </Card>
@@ -83,16 +85,16 @@ export default function EmbedPage({
             variant="outline"
             onClick={() => router.push(`/results/${attemptId}`)}
           >
-            &larr; Back to Results
+            &larr; {t('backToResults')}
           </Button>
         </div>
 
         {/* Embed Content Container */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">
-              Learning Content for {levelDisplay} Level
-            </CardTitle>
+              <CardTitle className="text-lg">
+                {t('title', { level: levelDisplay })}
+              </CardTitle>
           </CardHeader>
           <CardContent>
             <EmbedRenderer htmlContent={data.embedCode} />
@@ -105,10 +107,10 @@ export default function EmbedPage({
             variant="outline"
             onClick={() => router.push(`/results/${attemptId}`)}
           >
-            &larr; Back to Results
+            &larr; {t('backToResults')}
           </Button>
           <p className="text-sm text-gray-500">
-            You can return to results at any time.
+            {t('returnNote')}
           </p>
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Assignment } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
@@ -14,11 +15,12 @@ interface PublishButtonProps {
 export function PublishButton({ assignment, questionCount }: PublishButtonProps) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const t = useTranslations('assignment')
   const supabase = createClient()
 
   const togglePublish = async () => {
     if (assignment.status === 'draft' && questionCount === 0) {
-      alert('Add at least one question before publishing.')
+      alert(t('addQuestionFirst'))
       return
     }
 
@@ -32,7 +34,7 @@ export function PublishButton({ assignment, questionCount }: PublishButtonProps)
       .eq('id', assignment.id)
 
     if (error) {
-      alert('Error updating status: ' + error.message)
+      alert(`${t('errorUpdatingStatus')}: ${error.message}`)
     }
 
     setLoading(false)
@@ -46,10 +48,10 @@ export function PublishButton({ assignment, questionCount }: PublishButtonProps)
       variant={assignment.status === 'published' ? 'outline' : 'default'}
     >
       {loading
-        ? 'Updating...'
+        ? t('updating')
         : assignment.status === 'published'
-        ? 'Unpublish'
-        : 'Publish'}
+        ? t('unpublish')
+        : t('publish')}
     </Button>
   )
 }

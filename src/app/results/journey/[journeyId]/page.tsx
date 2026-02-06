@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, use } from 'react'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -49,6 +50,7 @@ export default function JourneyResultsPage({
   const [data, setData] = useState<JourneySummaryResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const t = useTranslations('journey')
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -56,12 +58,12 @@ export default function JourneyResultsPage({
         const response = await fetch(`/api/journey/${journeyId}/summary`)
         const result = await response.json()
         if (!response.ok) {
-          throw new Error(result.error || 'Failed to load journey summary')
+          throw new Error(result.error || t('notFound'))
         }
         setData(result)
         setLoading(false)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load journey summary')
+        setError(err instanceof Error ? err.message : t('notFound'))
         setLoading(false)
       }
     }
@@ -73,7 +75,7 @@ export default function JourneyResultsPage({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading journey summary...</p>
+          <p className="text-gray-600">{t('loading')}</p>
         </div>
       </div>
     )
@@ -84,7 +86,7 @@ export default function JourneyResultsPage({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6">
-            <p className="text-red-600">{error || 'Summary not found'}</p>
+            <p className="text-red-600">{error || t('notFound')}</p>
           </CardContent>
         </Card>
       </div>
@@ -98,11 +100,11 @@ export default function JourneyResultsPage({
       <div className="max-w-3xl mx-auto space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>{data.assignment.title} - Overall Results</CardTitle>
+            <CardTitle>{t('title', { quizTitle: data.assignment.title })}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-center py-4">
-              <p className="text-sm text-gray-500 mb-2">Overall Level</p>
+              <p className="text-sm text-gray-500 mb-2">{t('overallLevel')}</p>
               <Badge className={`text-xl px-6 py-2 ${getLevelColor(level)} text-white`}>
                 {getLevelDisplayName(level)}
               </Badge>
@@ -110,24 +112,24 @@ export default function JourneyResultsPage({
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-gray-50 rounded-md">
                 <p className="text-3xl font-bold text-gray-900">{data.summary.percentage}%</p>
-                <p className="text-sm text-gray-500">Overall Score</p>
+                <p className="text-sm text-gray-500">{t('overallScore')}</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-md">
                 <p className="text-3xl font-bold text-gray-900">
                   {data.summary.totalScore}/{data.summary.maxScore}
                 </p>
-                <p className="text-sm text-gray-500">Points</p>
+                <p className="text-sm text-gray-500">{t('points')}</p>
               </div>
             </div>
             <p className="text-sm text-gray-500">
-              Completed {data.summary.completedSessions} of {data.summary.totalSessions} sessions
+              {t('completedSessions', { completed: data.summary.completedSessions, total: data.summary.totalSessions })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Session Breakdown</CardTitle>
+            <CardTitle>{t('sessionBreakdown')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {data.sessionResults.map((result, index) => (
@@ -144,15 +146,15 @@ export default function JourneyResultsPage({
                   <Badge
                     variant={result.isComplete ? 'default' : 'secondary'}
                   >
-                    {result.isComplete ? 'Complete' : 'Incomplete'}
+                    {result.isComplete ? t('complete') : t('incomplete')}
                   </Badge>
                 </div>
                 <div className="text-sm text-gray-600">
-                  Score: {result.score}/{result.maxScore}
+                  {t('score', { score: result.score, maxScore: result.maxScore })}
                 </div>
                 {result.level && (
                   <div className="text-sm text-gray-600">
-                    Level: {getLevelDisplayName(result.level as Level)}
+                    {t('level', { level: getLevelDisplayName(result.level as Level) })}
                   </div>
                 )}
               </div>
@@ -163,12 +165,12 @@ export default function JourneyResultsPage({
         {data.finalRedirect && (
           <Card>
             <CardHeader>
-              <CardTitle>Final Learning Content</CardTitle>
+              <CardTitle>{t('finalContent')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {data.finalRedirect.type === 'link' && data.finalRedirect.url ? (
                 <Button onClick={() => window.open(data.finalRedirect?.url, '_blank')}>
-                  Open Learning Content
+                  {t('openContent')}
                 </Button>
               ) : data.finalRedirect.type === 'embed' && data.finalRedirect.embedCode ? (
                 <div className="border rounded-lg p-4 bg-white">

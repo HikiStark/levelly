@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -19,6 +20,8 @@ interface SubmissionActionsProps {
 
 export function SubmissionActions({ attemptId, assignmentId }: SubmissionActionsProps) {
   const router = useRouter()
+  const t = useTranslations('submissions')
+  const tc = useTranslations('common')
   const [isLoading, setIsLoading] = useState(false)
   const [dialogState, setDialogState] = useState<{
     open: boolean
@@ -48,7 +51,7 @@ export function SubmissionActions({ attemptId, assignmentId }: SubmissionActions
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Operation failed')
+        throw new Error(error.error || t('operationFailed'))
       }
 
       closeDialog()
@@ -62,7 +65,7 @@ export function SubmissionActions({ attemptId, assignmentId }: SubmissionActions
       }
     } catch (error) {
       console.error('Action error:', error)
-      alert(error instanceof Error ? error.message : 'Operation failed')
+      alert(error instanceof Error ? error.message : t('operationFailed'))
     } finally {
       setIsLoading(false)
     }
@@ -76,14 +79,14 @@ export function SubmissionActions({ attemptId, assignmentId }: SubmissionActions
           onClick={() => openDialog('regrade')}
           disabled={isLoading}
         >
-          Regrade
+          {t('regrade')}
         </Button>
         <Button
           variant="destructive"
           onClick={() => openDialog('delete')}
           disabled={isLoading}
         >
-          Delete
+          {t('delete')}
         </Button>
       </div>
 
@@ -92,32 +95,26 @@ export function SubmissionActions({ attemptId, assignmentId }: SubmissionActions
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {dialogState.action === 'delete' ? 'Delete Submission' : 'Regrade Submission'}
+              {dialogState.action === 'delete' ? t('deleteTitle') : t('regradeTitle')}
             </DialogTitle>
             <DialogDescription>
               {dialogState.action === 'delete' ? (
-                <>
-                  Are you sure you want to delete this submission? This action cannot be undone
-                  and all answers will be permanently removed.
-                </>
+                t('singleDeleteConfirm')
               ) : (
-                <>
-                  Are you sure you want to regrade this submission? This will replace all existing
-                  grades and AI feedback. The grading process may take a moment.
-                </>
+                t('singleRegradeConfirm')
               )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog} disabled={isLoading}>
-              Cancel
+              {tc('cancel')}
             </Button>
             <Button
               variant={dialogState.action === 'delete' ? 'destructive' : 'default'}
               onClick={handleAction}
               disabled={isLoading}
             >
-              {isLoading ? 'Processing...' : dialogState.action === 'delete' ? 'Delete' : 'Regrade'}
+              {isLoading ? t('processing') : dialogState.action === 'delete' ? t('delete') : t('regrade')}
             </Button>
           </DialogFooter>
         </DialogContent>

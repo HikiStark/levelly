@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Question, SliderConfig, ImageMapConfig, Session } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
@@ -36,6 +37,8 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
   const [sessions, setSessions] = useState<Session[]>([])
   const router = useRouter()
   const supabase = createClient()
+  const t = useTranslations('questions')
+  const tc = useTranslations('common')
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -53,9 +56,9 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
   }, [assignmentId, questions.length])
 
   const getSessionLabel = (sessionId: string | null) => {
-    if (!sessionId) return 'Unassigned'
+    if (!sessionId) return t('unassigned')
     const session = sessions.find(s => s.id === sessionId)
-    return session?.title || 'Session'
+    return session?.title || t('session')
   }
 
   const filteredQuestions = useMemo(() => {
@@ -82,7 +85,7 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
       .eq('id', question.id)
 
     if (error) {
-      alert('Error updating question: ' + error.message)
+      alert(`${t('errorUpdating')}: ${error.message}`)
       return
     }
 
@@ -90,7 +93,7 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
   }
 
   const handleDelete = async (questionId: string) => {
-    if (!confirm('Are you sure you want to delete this question?')) return
+    if (!confirm(t('deleteConfirm'))) return
 
     setDeleting(questionId)
 
@@ -100,7 +103,7 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
       .eq('id', questionId)
 
     if (error) {
-      alert('Error deleting question: ' + error.message)
+      alert(`${t('errorDeleting')}: ${error.message}`)
     }
 
     setDeleting(null)
@@ -109,9 +112,9 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
 
   if (filteredQuestions.length === 0) {
     return (
-      <p className="text-gray-500 text-center py-8">
-        No questions in this session yet.
-      </p>
+        <p className="text-gray-500 text-center py-8">
+          {t('noQuestionsInSession')}
+        </p>
     )
   }
 
@@ -130,11 +133,11 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <span className="text-sm font-medium text-gray-500">Q{index + 1}</span>
                     <Badge variant={typeBadge.variant}>{typeBadge.label}</Badge>
-                    <span className="text-sm text-gray-400">
-                      {question.points} point{question.points !== 1 ? 's' : ''}
-                    </span>
+                      <span className="text-sm text-gray-400">
+                        {t('point', { count: question.points })}
+                      </span>
                     {question.has_correct_answer === false && (
-                      <Badge variant="secondary">Ungraded</Badge>
+                      <Badge variant="secondary">{t('ungraded')}</Badge>
                     )}
                     <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded">
                       {getSessionLabel(question.session_id)}
@@ -145,7 +148,7 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
                         onChange={(e) => handleSessionChange(question, e.target.value || null)}
                         className="ml-2 border border-gray-300 rounded-md px-2 py-1 text-xs"
                       >
-                        <option value="">Unassigned</option>
+                        <option value="">{t('unassigned')}</option>
                         {sessions.map((s) => (
                           <option key={s.id} value={s.id}>{s.title}</option>
                         ))}
@@ -156,7 +159,7 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
                   {question.image_url && question.type !== 'image_map' && (
                     <img
                       src={question.image_url}
-                      alt="Question image"
+                      alt={t('questionImageAlt')}
                       className="max-w-xs h-auto rounded-lg mb-2"
                     />
                   )}
@@ -174,7 +177,7 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
                             className={`text-sm ${isCorrect ? 'text-green-600 font-medium' : 'text-gray-600'}`}
                           >
                             {choice.id.toUpperCase()}) {choice.text}
-                            {isCorrect ? ' [correct]' : ''}
+                            {isCorrect ? ` ${t('correct')}` : ''}
                           </p>
                         )
                       })}
@@ -183,7 +186,7 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
 
                   {question.type === 'open' && question.reference_answer && (
                     <p className="text-sm text-gray-500 mt-2">
-                      <span className="font-medium">Reference:</span>{' '}
+                      <span className="font-medium">{t('referenceAnswerShort')}:</span>{' '}
                       {question.reference_answer.substring(0, 100)}
                       {question.reference_answer.length > 100 ? '...' : ''}
                     </p>
@@ -192,13 +195,11 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
                   {question.type === 'slider' && sliderConfig && (
                     <div className="text-sm text-gray-500 mt-2 space-y-1">
                       <p>
-                        <span className="font-medium">Range:</span> {sliderConfig.min} - {sliderConfig.max}
-                        {sliderConfig.step !== 1 ? ` (step: ${sliderConfig.step})` : ''}
+                        {t('range', { min: sliderConfig.min, max: sliderConfig.max, step: sliderConfig.step })}
                       </p>
                       {question.has_correct_answer !== false && (
                         <p>
-                          <span className="font-medium">Correct:</span> {sliderConfig.correct_value}
-                          {sliderConfig.tolerance > 0 ? ` (+/-${sliderConfig.tolerance})` : ''}
+                          {t('correctWithTolerance', { value: sliderConfig.correct_value, tolerance: sliderConfig.tolerance })}
                         </p>
                       )}
                     </div>
@@ -209,12 +210,12 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
                       <div className="relative inline-block">
                         <img
                           src={imageMapConfig.base_image_url}
-                          alt="Image map"
+                          alt={t('imageMapLabel')}
                           className="max-w-xs h-auto rounded-lg"
                         />
                         <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {imageMapConfig.flags.length} flag{imageMapConfig.flags.length !== 1 ? 's' : ''}
+                          {t('flags', { count: imageMapConfig.flags.length })}
                         </div>
                       </div>
                     </div>
@@ -232,7 +233,7 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
                     onClick={() => handleDelete(question.id)}
                     disabled={deleting === question.id}
                   >
-                    {deleting === question.id ? 'Deleting...' : 'Delete'}
+                    {deleting === question.id ? tc('loading') : tc('delete')}
                   </Button>
                 </div>
               </div>

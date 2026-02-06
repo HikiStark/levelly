@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,8 @@ interface AddQuestionDialogProps {
 }
 
 export function AddQuestionDialog({ assignmentId, questions, initialSessionId = null }: AddQuestionDialogProps) {
+  const t = useTranslations('questions')
+  const tc = useTranslations('common')
   const [open, setOpen] = useState(false)
   const [questionType, setQuestionType] = useState<QuestionType>('mcq')
   const [prompt, setPrompt] = useState('')
@@ -132,14 +135,14 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
     if (questionType === 'mcq') {
       const filledChoices = choices.filter(c => c.text.trim())
       if (filledChoices.length < 2) {
-        setError('Please provide at least 2 choices')
+        setError(t('atLeastTwoChoices'))
         setLoading(false)
         return
       }
       if (hasCorrectAnswer) {
         if (allowMultipleCorrect) {
           if (correctChoices.length < 2) {
-            setError('Please select at least 2 correct answers for multiple-answer questions')
+            setError(t('atLeastTwoCorrect'))
             setLoading(false)
             return
           }
@@ -161,18 +164,18 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
     } else if (questionType === 'slider') {
       // Validate slider config
       if (sliderMin >= sliderMax) {
-        setError('Maximum value must be greater than minimum value')
+        setError(t('maxGreaterThanMin'))
         setLoading(false)
         return
       }
       if (hasCorrectAnswer) {
         if (sliderCorrectValue < sliderMin || sliderCorrectValue > sliderMax) {
-          setError('Correct value must be between min and max')
+          setError(t('correctBetweenMinMax'))
           setLoading(false)
           return
         }
         if (sliderTolerance < 0) {
-          setError('Tolerance must be 0 or greater')
+          setError(t('tolerancePositive'))
           setLoading(false)
           return
         }
@@ -221,13 +224,13 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
       }}
     >
       <DialogTrigger asChild>
-        <Button>Add Question</Button>
+        <Button>{t('addQuestion')}</Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Question</DialogTitle>
+          <DialogTitle>{t('addQuestion')}</DialogTitle>
           <DialogDescription>
-            Create a multiple choice or open-ended question
+            {t('createDescription')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -240,14 +243,14 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
           {/* Session Selection */}
           {sessions.length > 0 && (
             <div className="space-y-2">
-              <Label htmlFor="session-select">Session</Label>
+              <Label htmlFor="session-select">{t('session')}</Label>
               <select
                 id="session-select"
                 value={selectedSessionId || ''}
                 onChange={(e) => setSelectedSessionId(e.target.value || null)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
               >
-                <option value="">No session (legacy)</option>
+                <option value="">{t('noSession')}</option>
                 {sessions.map((session) => (
                   <option key={session.id} value={session.id}>
                     {session.title}
@@ -259,7 +262,7 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
 
           {/* Question Type */}
           <div className="space-y-2">
-            <Label>Question Type</Label>
+            <Label>{t('questionType')}</Label>
             <RadioGroup
               value={questionType}
               onValueChange={(v) => {
@@ -273,29 +276,29 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="mcq" id="mcq" />
-                <Label htmlFor="mcq" className="cursor-pointer">Multiple Choice</Label>
+                <Label htmlFor="mcq" className="cursor-pointer">{t('mcq')}</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="open" id="open" />
-                <Label htmlFor="open" className="cursor-pointer">Open-ended</Label>
+                <Label htmlFor="open" className="cursor-pointer">{t('open')}</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="slider" id="slider" />
-                <Label htmlFor="slider" className="cursor-pointer">Slider</Label>
+                <Label htmlFor="slider" className="cursor-pointer">{t('slider')}</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="image_map" id="image_map" />
-                <Label htmlFor="image_map" className="cursor-pointer">Image Map</Label>
+                <Label htmlFor="image_map" className="cursor-pointer">{t('imageMap')}</Label>
               </div>
             </RadioGroup>
           </div>
 
           {/* Question Prompt */}
           <div className="space-y-2">
-            <Label htmlFor="prompt">Question</Label>
+            <Label htmlFor="prompt">{t('question')}</Label>
             <Textarea
               id="prompt"
-              placeholder="Enter your question here..."
+              placeholder={t('questionPlaceholder')}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}
@@ -305,7 +308,7 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
 
           {/* Points */}
           <div className="space-y-2">
-            <Label htmlFor="points">Points</Label>
+            <Label htmlFor="points">{t('points')}</Label>
             <Input
               id="points"
               type="number"
@@ -317,7 +320,7 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
             />
             {!hasCorrectAnswer && (
               <p className="text-sm text-gray-500">
-                This question won&apos;t be auto-graded or count toward the score.
+                {t('notAutoGraded')}
               </p>
             )}
           </div>
@@ -326,9 +329,9 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
           {questionType !== 'image_map' && (
             <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
               <div className="space-y-0.5">
-                <Label htmlFor="has-correct-answer">Has Correct Answer</Label>
+                <Label htmlFor="has-correct-answer">{t('hasCorrectAnswer')}</Label>
                 <p className="text-sm text-gray-500">
-                  Turn off to create a survey-style question.
+                  {t('surveyNote')}
                 </p>
               </div>
               <Switch
@@ -361,12 +364,12 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
                     }}
                   />
                   <Label htmlFor="allow-multiple" className="cursor-pointer">
-                    Allow multiple correct answers (students must select all)
+                    {t('allowMultiple')}
                   </Label>
                 </div>
               )}
 
-              <Label>Answer Choices</Label>
+              <Label>{t('answerChoices')}</Label>
               {hasCorrectAnswer && allowMultipleCorrect ? (
                 <div className="space-y-3">
                   {choices.map((choice) => (

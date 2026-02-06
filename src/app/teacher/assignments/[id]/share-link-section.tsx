@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { ShareLink } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,7 @@ export function ShareLinkSection({ assignmentId, shareLinks, isPublished }: Shar
   const [copied, setCopied] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+  const t = useTranslations('shareLinks')
 
   const generateLink = async () => {
     setGenerating(true)
@@ -41,7 +43,7 @@ export function ShareLinkSection({ assignmentId, shareLinks, isPublished }: Shar
       })
 
     if (error) {
-      alert('Error generating link: ' + error.message)
+      alert(`${t('errorGenerating')}: ${error.message}`)
     }
 
     setGenerating(false)
@@ -62,7 +64,7 @@ export function ShareLinkSection({ assignmentId, shareLinks, isPublished }: Shar
       .eq('id', linkId)
 
     if (error) {
-      alert('Error deactivating link: ' + error.message)
+      alert(`${t('errorDeactivating')}: ${error.message}`)
     }
 
     router.refresh()
@@ -71,7 +73,7 @@ export function ShareLinkSection({ assignmentId, shareLinks, isPublished }: Shar
   if (!isPublished) {
     return (
       <p className="text-gray-500">
-        Publish the quiz to generate share links.
+        {t('publishFirst')}
       </p>
     )
   }
@@ -79,11 +81,11 @@ export function ShareLinkSection({ assignmentId, shareLinks, isPublished }: Shar
   return (
     <div className="space-y-4">
       <Button onClick={generateLink} disabled={generating}>
-        {generating ? 'Generating...' : 'Generate New Link'}
+        {generating ? t('generating') : t('generateNew')}
       </Button>
 
       {shareLinks.length === 0 ? (
-        <p className="text-gray-500">No active share links.</p>
+        <p className="text-gray-500">{t('noActive')}</p>
       ) : (
         <div className="space-y-3">
           {shareLinks.map((link) => {
@@ -99,13 +101,13 @@ export function ShareLinkSection({ assignmentId, shareLinks, isPublished }: Shar
                   variant="outline"
                   onClick={() => copyLink(link.token)}
                 >
-                  {copied === link.token ? 'Copied!' : 'Copy'}
+                  {copied === link.token ? t('copied') : t('copy')}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => deactivateLink(link.id)}
                 >
-                  Deactivate
+                  {t('deactivate')}
                 </Button>
               </div>
             )

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Question, Session } from '@/lib/supabase/types'
 import { AddQuestionDialog } from './add-question-dialog'
 import { ImageMapEditor } from './image-map-editor'
@@ -13,6 +14,7 @@ interface QuestionsSectionProps {
 }
 
 export function QuestionsSection({ assignmentId, questions }: QuestionsSectionProps) {
+  const t = useTranslations('questions')
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedSessionValue, setSelectedSessionValue] = useState<string>('all')
 
@@ -38,11 +40,11 @@ export function QuestionsSection({ assignmentId, questions }: QuestionsSectionPr
   }, [selectedSessionValue])
 
   const selectedLabel = useMemo(() => {
-    if (selectedSessionValue === 'all') return 'All sessions'
-    if (selectedSessionValue === 'unassigned') return 'Unassigned'
+    if (selectedSessionValue === 'all') return t('allSessions')
+    if (selectedSessionValue === 'unassigned') return t('unassigned')
     const session = sessions.find(s => s.id === selectedSessionValue)
     return session?.title || 'Selected session'
-  }, [selectedSessionValue, sessions])
+  }, [selectedSessionValue, sessions, t])
 
   const selectedQuestionCount = useMemo(() => {
     if (selectedSessionId === 'all') return questions.length
@@ -54,15 +56,15 @@ export function QuestionsSection({ assignmentId, questions }: QuestionsSectionPr
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div className="space-y-2 min-w-[260px]">
-          <Label htmlFor="question-session-filter">Question Session</Label>
+          <Label htmlFor="question-session-filter">{t('questionSession')}</Label>
           <select
             id="question-session-filter"
             value={selectedSessionValue}
             onChange={(e) => setSelectedSessionValue(e.target.value)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
           >
-            <option value="all">All sessions</option>
-            <option value="unassigned">Unassigned (legacy)</option>
+            <option value="all">{t('allSessions')}</option>
+            <option value="unassigned">{t('unassigned')}</option>
             {sessions.map((session) => (
               <option key={session.id} value={session.id}>
                 {session.title}
@@ -85,7 +87,7 @@ export function QuestionsSection({ assignmentId, questions }: QuestionsSectionPr
       </div>
 
       <p className="text-sm text-gray-500">
-        Showing {selectedQuestionCount} question{selectedQuestionCount !== 1 ? 's' : ''} in {selectedLabel}.
+        {t('showing', { count: selectedQuestionCount, session: selectedLabel })}
       </p>
 
       <QuestionList

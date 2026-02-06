@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { LanguageToggle } from '@/components/language-toggle'
+import { useTranslations } from 'next-intl'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -18,6 +20,7 @@ export default function LoginPage() {
   const [consentGiven, setConsentGiven] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  const t = useTranslations('auth.login')
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,11 +54,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8 sm:flex sm:items-center sm:justify-center">
+    <div className="min-h-screen bg-gray-50 px-4 py-8 sm:flex sm:items-center sm:justify-center relative">
+      <div className="absolute top-4 right-4">
+        <LanguageToggle />
+      </div>
       <Card className="mx-auto w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
-          <CardDescription>Sign in to your teacher account</CardDescription>
+          <CardTitle>{t('title')}</CardTitle>
+          <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
@@ -65,18 +71,18 @@ export default function LoginPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('email')}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t('emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('password')}</Label>
               <Input
                 id="password"
                 type="password"
@@ -95,18 +101,18 @@ export default function LoginPage() {
                 htmlFor="consent"
                 className="text-sm text-gray-600 leading-relaxed cursor-pointer"
               >
-                I consent to the collection and processing of my personal data (including email, name, and usage information) to provide and improve this service.
+                {t('consent')}
               </Label>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={loading || !consentGiven}>
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? t('submitting') : t('submit')}
             </Button>
             <p className="text-sm text-gray-600">
-              Don&apos;t have an account?{' '}
+              {t('noAccount')}{' '}
               <Link href="/signup" className="text-blue-600 hover:underline">
-                Sign up
+                {t('signUpLink')}
               </Link>
             </p>
           </CardFooter>

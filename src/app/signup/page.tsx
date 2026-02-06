@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { LanguageToggle } from '@/components/language-toggle'
+import { useTranslations } from 'next-intl'
 
 export default function SignupPage() {
   const [name, setName] = useState('')
@@ -19,6 +21,7 @@ export default function SignupPage() {
   const [consentGiven, setConsentGiven] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  const t = useTranslations('auth.signup')
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,11 +67,14 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 relative">
+      <div className="absolute top-4 right-4">
+        <LanguageToggle />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Create an account</CardTitle>
-          <CardDescription>Sign up to start creating quizzes</CardDescription>
+          <CardTitle>{t('title')}</CardTitle>
+          <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
@@ -78,33 +84,33 @@ export default function SignupPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t('name')}</Label>
               <Input
                 id="name"
                 type="text"
-                placeholder="Your name"
+                placeholder={t('namePlaceholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('email')}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t('emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('password')}</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="At least 6 characters"
+                placeholder={t('passwordPlaceholder')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={6}
@@ -121,18 +127,18 @@ export default function SignupPage() {
                 htmlFor="consent"
                 className="text-sm text-gray-600 leading-relaxed cursor-pointer"
               >
-                I consent to the collection and processing of my personal data (including email, name, and usage information) to provide and improve this service.
+                {t('consent')}
               </Label>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={loading || !consentGiven}>
-              {loading ? 'Creating account...' : 'Create account'}
+              {loading ? t('submitting') : t('submit')}
             </Button>
             <p className="text-sm text-gray-600">
-              Already have an account?{' '}
+              {t('hasAccount')}{' '}
               <Link href="/login" className="text-blue-600 hover:underline">
-                Sign in
+                {t('signInLink')}
               </Link>
             </p>
           </CardFooter>

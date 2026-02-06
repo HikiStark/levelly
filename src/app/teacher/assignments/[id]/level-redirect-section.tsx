@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { LevelRedirect, Session } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
@@ -38,6 +39,7 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
   const [previewLevel, setPreviewLevel] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+  const t = useTranslations('redirects')
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -130,20 +132,19 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
   return (
     <div className="space-y-6">
       <p className="text-sm text-gray-500">
-        Configure what students see based on their level. You can either redirect them to an external link
-        or show them embedded content (like H5P interactive modules).
+        {t('info')}
       </p>
 
       {sessions.length > 0 && (
         <div className="space-y-2">
-          <Label htmlFor="session-redirect-select">Session</Label>
+          <Label htmlFor="session-redirect-select">{t('session')}</Label>
           <select
             id="session-redirect-select"
             value={selectedSessionId || ''}
             onChange={(e) => setSelectedSessionId(e.target.value || null)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
           >
-            <option value="">Final (after all sessions)</option>
+            <option value="">{t('final')}</option>
             {sessions.map((session) => (
               <option key={session.id} value={session.id}>
                 {session.title}
@@ -161,9 +162,9 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
                 <Label className="capitalize font-medium text-lg">
                   {level}
                   <span className="text-xs text-gray-400 block font-normal">
-                    {level === 'beginner' && '(<50%)'}
-                    {level === 'intermediate' && '(50-79%)'}
-                    {level === 'advanced' && '(≥80%)'}
+                    {level === 'beginner' && t('beginnerRange')}
+                    {level === 'intermediate' && t('intermediateRange')}
+                    {level === 'advanced' && t('advancedRange')}
                   </span>
                 </Label>
               </div>
@@ -177,19 +178,19 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="none" id={`${level}-none`} />
                   <Label htmlFor={`${level}-none`} className="font-normal cursor-pointer">
-                    No redirect
+                    {t('noRedirect')}
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="link" id={`${level}-link`} />
                   <Label htmlFor={`${level}-link`} className="font-normal cursor-pointer">
-                    External link (opens in new tab)
+                    {t('externalLink')}
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="embed" id={`${level}-embed`} />
                   <Label htmlFor={`${level}-embed`} className="font-normal cursor-pointer">
-                    Embedded content (H5P, iframe, etc.)
+                    {t('embeddedContent')}
                   </Label>
                 </div>
               </RadioGroup>
@@ -198,11 +199,11 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
               {configs[level].type === 'link' && (
                 <div className="pl-6 space-y-2">
                   <Label htmlFor={`${level}-url`} className="text-sm text-gray-600">
-                    Redirect URL
+                    {t('redirectUrl')}
                   </Label>
                   <Input
                     id={`${level}-url`}
-                    placeholder="https://example.com/course"
+                    placeholder={t('redirectUrlPlaceholder')}
                     value={configs[level].url}
                     onChange={(e) => updateConfig(level, 'url', e.target.value)}
                   />
@@ -213,7 +214,7 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
               {configs[level].type === 'embed' && (
                 <div className="pl-6 space-y-3">
                   <Label htmlFor={`${level}-embed`} className="text-sm text-gray-600">
-                    Embed Code (HTML)
+                    {t('embedCode')}
                   </Label>
                   <Textarea
                     id={`${level}-embed`}
@@ -224,8 +225,7 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
                     className="font-mono text-sm"
                   />
                   <p className="text-xs text-gray-500">
-                    Paste the full embed code including iframe and script tags.
-                    Students will see this content after viewing their results.
+                    {t('embedHelp')}
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -234,13 +234,13 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
                       type="button"
                       onClick={() => setPreviewLevel(previewLevel === level ? null : level)}
                     >
-                      {previewLevel === level ? 'Hide Preview' : 'Preview'}
+                      {previewLevel === level ? t('hidePreview') : t('showPreview')}
                     </Button>
                   </div>
                   {previewLevel === level && configs[level].embedCode && (
                     <div className="border rounded-lg p-4 bg-gray-50">
                       <p className="text-xs text-gray-500 mb-2">
-                        Preview (scripts disabled for safety):
+                        {t('previewNote')}
                       </p>
                       <div
                         className="min-h-[200px] bg-white rounded border"
@@ -258,7 +258,7 @@ export function LevelRedirectSection({ assignmentId, redirects }: LevelRedirectS
       </div>
 
       <Button onClick={saveRedirects} disabled={saving}>
-        {saving ? 'Saving...' : 'Save Redirects'}
+        {saving ? t('saving') : t('saveRedirects')}
       </Button>
     </div>
   )

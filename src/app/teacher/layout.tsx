@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { LogoutButton } from './logout-button'
+import { LanguageToggle } from '@/components/language-toggle'
+import { getTranslations } from 'next-intl/server'
 
 export default async function TeacherLayout({
   children,
@@ -21,6 +23,8 @@ export default async function TeacherLayout({
     .eq('user_id', user.id)
     .single()
 
+  const t = await getTranslations('nav')
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b">
@@ -28,19 +32,20 @@ export default async function TeacherLayout({
           <div className="flex justify-between h-16">
             <div className="flex items-center gap-8">
               <Link href="/teacher" className="text-xl font-bold text-gray-900">
-                Levelly
+                {t('brand')}
               </Link>
               <Link
                 href="/teacher"
                 className="text-gray-600 hover:text-gray-900"
               >
-                Dashboard
+                {t('dashboard')}
               </Link>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">
                 {teacher?.name || user.email}
               </span>
+              <LanguageToggle />
               <LogoutButton />
             </div>
           </div>

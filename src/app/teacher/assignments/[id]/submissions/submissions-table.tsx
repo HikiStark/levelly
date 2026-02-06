@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -72,6 +73,8 @@ function formatDate(dateString: string | null): string {
 
 export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTableProps) {
   const router = useRouter()
+  const t = useTranslations('submissions')
+  const tc = useTranslations('common')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
   const [dialogState, setDialogState] = useState<{
@@ -125,7 +128,7 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Operation failed')
+        throw new Error(error.error || t('operationFailed'))
       }
 
       setSelectedIds(new Set())
@@ -133,7 +136,7 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
       router.refresh()
     } catch (error) {
       console.error('Bulk action error:', error)
-      alert(error instanceof Error ? error.message : 'Operation failed')
+      alert(error instanceof Error ? error.message : t('operationFailed'))
     } finally {
       setIsLoading(false)
     }
@@ -152,14 +155,14 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Operation failed')
+        throw new Error(error.error || t('operationFailed'))
       }
 
       closeDialog()
       router.refresh()
     } catch (error) {
       console.error('Single action error:', error)
-      alert(error instanceof Error ? error.message : 'Operation failed')
+      alert(error instanceof Error ? error.message : t('operationFailed'))
     } finally {
       setIsLoading(false)
     }
@@ -173,7 +176,7 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
       {hasSelection && (
         <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg mb-4">
           <span className="text-sm text-blue-900">
-            {selectedIds.size} submission{selectedIds.size > 1 ? 's' : ''} selected
+            {t('selected', { count: selectedIds.size })}
           </span>
           <div className="flex gap-2 ml-auto">
             <Button
@@ -182,7 +185,7 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
               onClick={() => openDialog('regrade', Array.from(selectedIds))}
               disabled={isLoading}
             >
-              Regrade Selected
+              {t('regradeSelected')}
             </Button>
             <Button
               variant="destructive"
@@ -190,14 +193,14 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
               onClick={() => openDialog('delete', Array.from(selectedIds))}
               disabled={isLoading}
             >
-              Delete Selected
+              {t('deleteSelected')}
             </Button>
           </div>
         </div>
       )}
 
       {submittedAttempts.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">No submissions yet</p>
+        <p className="text-gray-500 text-center py-8">{t('noSubmissions')}</p>
       ) : (
         <Table>
           <TableHeader>
@@ -210,12 +213,12 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
                   className="h-4 w-4 rounded border-gray-300"
                 />
               </TableHead>
-              <TableHead>Student</TableHead>
-              <TableHead>Submitted</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Score</TableHead>
-              <TableHead>Level</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t('student')}</TableHead>
+              <TableHead>{t('submitted')}</TableHead>
+              <TableHead>{t('status')}</TableHead>
+              <TableHead>{t('score')}</TableHead>
+              <TableHead>{t('level')}</TableHead>
+              <TableHead className="text-right">{t('actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -231,14 +234,14 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
                 </TableCell>
                 <TableCell>
                   <div>
-                    <p className="font-medium">{attempt.student_name || 'Anonymous'}</p>
-                    <p className="text-sm text-gray-500">{attempt.student_email || '-'}</p>
+                    <p className="font-medium">{attempt.student_name || tc('anonymous')}</p>
+                    <p className="text-sm text-gray-500">{attempt.student_email || tc('noData')}</p>
                   </div>
                 </TableCell>
                 <TableCell>{formatDate(attempt.submitted_at)}</TableCell>
                 <TableCell>
                   <Badge variant={getStatusBadgeVariant(attempt.status)}>
-                    {attempt.is_final ? 'Graded' : attempt.status === 'grading' ? 'Grading...' : attempt.status}
+                    {attempt.is_final ? 'Graded' : attempt.status === 'grading' ? t('grading') : attempt.status}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -261,7 +264,7 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
                   <div className="flex justify-end gap-2">
                     <Link href={`/teacher/assignments/${assignmentId}/submissions/${attempt.id}`}>
                       <Button variant="outline" size="sm">
-                        View
+                        {t('view')}
                       </Button>
                     </Link>
                     <Button
@@ -270,7 +273,7 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
                       onClick={() => openDialog('regrade', [attempt.id])}
                       disabled={isLoading}
                     >
-                      Regrade
+                      {t('regrade')}
                     </Button>
                     <Button
                       variant="destructive"
@@ -278,7 +281,7 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
                       onClick={() => openDialog('delete', [attempt.id])}
                       disabled={isLoading}
                     >
-                      Delete
+                      {t('delete')}
                     </Button>
                   </div>
                 </TableCell>
@@ -293,27 +296,21 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {dialogState.action === 'delete' ? 'Delete Submission' : 'Regrade Submission'}
-              {dialogState.targetIds.length > 1 ? 's' : ''}
+              {dialogState.action === 'delete'
+                ? dialogState.targetIds.length > 1 ? t('deleteTitlePlural') : t('deleteTitle')
+                : dialogState.targetIds.length > 1 ? t('regradeTitlePlural') : t('regradeTitle')}
             </DialogTitle>
             <DialogDescription>
               {dialogState.action === 'delete' ? (
-                <>
-                  Are you sure you want to delete {dialogState.targetIds.length} submission
-                  {dialogState.targetIds.length > 1 ? 's' : ''}? This action cannot be undone.
-                </>
+                t('deleteConfirm', { count: dialogState.targetIds.length })
               ) : (
-                <>
-                  Are you sure you want to regrade {dialogState.targetIds.length} submission
-                  {dialogState.targetIds.length > 1 ? 's' : ''}? This will replace all existing grades
-                  and AI feedback.
-                </>
+                t('regradeConfirm', { count: dialogState.targetIds.length })
               )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog} disabled={isLoading}>
-              Cancel
+              {tc('cancel')}
             </Button>
             <Button
               variant={dialogState.action === 'delete' ? 'destructive' : 'default'}
@@ -326,7 +323,7 @@ export function SubmissionsTable({ attempts, assignmentId }: SubmissionsTablePro
               }}
               disabled={isLoading}
             >
-              {isLoading ? 'Processing...' : dialogState.action === 'delete' ? 'Delete' : 'Regrade'}
+              {isLoading ? t('processing') : dialogState.action === 'delete' ? t('delete') : t('regrade')}
             </Button>
           </DialogFooter>
         </DialogContent>

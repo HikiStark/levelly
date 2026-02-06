@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { QuizContainer } from './quiz-container'
 
 export default async function QuizPage({
@@ -36,11 +37,12 @@ export default async function QuizPage({
 
   // Check if assignment is published
   if (assignment.status !== 'published') {
+    const t = await getTranslations('quiz')
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Quiz Not Available</h1>
-          <p className="text-gray-600">This quiz is not currently available.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('notAvailableTitle')}</h1>
+          <p className="text-gray-600">{t('notAvailable')}</p>
         </div>
       </div>
     )

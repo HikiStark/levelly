@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,8 @@ export default function NewAssignmentPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const t = useTranslations('newQuiz')
+  const tCommon = useTranslations('common')
   const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,9 +83,9 @@ export default function NewAssignmentPage() {
     <div className="max-w-2xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle>Create New Quiz</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
           <CardDescription>
-            Give your quiz a name and description, then add questions.
+            {t('description')}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -93,20 +96,20 @@ export default function NewAssignmentPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="title">Quiz Title</Label>
+              <Label htmlFor="title">{t('quizTitle')}</Label>
               <Input
                 id="title"
-                placeholder="e.g., JavaScript Fundamentals Assessment"
+                placeholder={t('titlePlaceholder')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
+              <Label htmlFor="description">{t('quizDescription')}</Label>
               <Textarea
                 id="description"
-                placeholder="Describe what this quiz assesses..."
+                placeholder={t('descriptionPlaceholder')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
@@ -114,14 +117,14 @@ export default function NewAssignmentPage() {
             </div>
             <div className="flex gap-4 pt-4">
               <Button type="submit" disabled={loading}>
-                {loading ? 'Creating...' : 'Create Quiz'}
+                {loading ? tCommon('creating') : t('create')}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
               >
-                Cancel
+                {t('cancel')}
               </Button>
             </div>
           </CardContent>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Question, Session } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,8 @@ import { SliderQuestion } from './slider-question'
 import { ImageMapQuestion } from './image-map-question'
 import { SessionProgressBar } from '@/components/session-progress-bar'
 import { SessionMap } from '@/components/session-map'
+import { Checkbox } from '@/components/ui/checkbox'
+import { LanguageToggle } from '@/components/language-toggle'
 
 interface QuizContainerProps {
   assignment: {
@@ -46,7 +49,9 @@ interface AnswerState {
 }
 
 export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerProps) {
+  const t = useTranslations('quiz')
   const [started, setStarted] = useState(false)
+  const [consentGiven, setConsentGiven] = useState(false)
   const [studentName, setStudentName] = useState('')
   const [studentEmail, setStudentEmail] = useState('')
   const [answers, setAnswers] = useState<AnswerState>({})
@@ -266,7 +271,7 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading quiz...</p>
+          <p className="text-gray-600">{t('loadingQuiz')}</p>
         </div>
       </div>
     )
@@ -278,13 +283,13 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
         <div className="max-w-2xl mx-auto">
           <Card>
             <CardHeader>
-              <CardTitle>Journey Complete</CardTitle>
-              <CardDescription>You have already finished this journey.</CardDescription>
+              <CardTitle>{t('journeyComplete')}</CardTitle>
+              <CardDescription>{t('journeyCompleteDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               {journeyId && (
                 <Button onClick={() => router.push(`/results/journey/${journeyId}`)}>
-                  View Overall Results
+                  {t('viewOverallResults')}
                 </Button>
               )}
             </CardContent>
@@ -316,27 +321,40 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
               )}
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Your Name (optional)</Label>
+                  <Label htmlFor="name">{t('yourName')}</Label>
                   <Input
                     id="name"
-                    placeholder="Enter your name"
+                    placeholder={t('enterName')}
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Your Email (optional)</Label>
+                  <Label htmlFor="email">{t('yourEmail')}</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder={t('enterEmail')}
                     value={studentEmail}
                     onChange={(e) => setStudentEmail(e.target.value)}
                   />
                 </div>
               </div>
-              <Button onClick={handleStart} className="w-full mt-6">
-                Start Quiz
+              <div className="flex items-start gap-3 pt-2">
+                <Checkbox
+                  id="student-consent"
+                  checked={consentGiven}
+                  onCheckedChange={(checked) => setConsentGiven(checked === true)}
+                />
+                <Label
+                  htmlFor="student-consent"
+                  className="text-sm text-gray-600 leading-relaxed cursor-pointer"
+                >
+                  {t('consent')}
+                </Label>
+              </div>
+              <Button onClick={handleStart} className="w-full mt-6" disabled={!consentGiven}>
+                {t('startQuiz')}
               </Button>
             </CardContent>
           </Card>
@@ -350,7 +368,7 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading questions...</p>
+          <p className="text-gray-600">{t('loadingQuestions')}</p>
         </div>
       </div>
     )
@@ -361,7 +379,7 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
-            <p className="text-gray-600">No questions available for this session.</p>
+            <p className="text-gray-600">{t('noQuestions')}</p>
           </CardContent>
         </Card>
       </div>
@@ -371,6 +389,9 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-3xl mx-auto">
+        <div className="flex justify-end mb-2">
+          <LanguageToggle />
+        </div>
         <div className="mb-8 space-y-4">
           {sessions.length > 0 && (
             <SessionProgressBar
@@ -381,7 +402,7 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{assignment.title}</h1>
             <p className="text-gray-600 mt-1">
-              {answeredCount} of {questions.length} answered
+              {t('answered', { answered: answeredCount, total: questions.length })}
             </p>
           </div>
         </div>
@@ -397,9 +418,9 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
             <Card key={question.id}>
               <CardHeader>
                 <CardTitle className="text-lg">
-                  Question {index + 1}
+                  {t('questionNumber', { number: index + 1 })}
                   <span className="text-sm font-normal text-gray-500 ml-2">
-                    ({question.points} point{question.points !== 1 ? 's' : ''})
+                    {t('pointsSuffix', { count: question.points })}
                   </span>
                 </CardTitle>
               </CardHeader>
@@ -409,7 +430,7 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
                   <div className="mb-4">
                     <img
                       src={question.image_url}
-                      alt="Question image"
+                      alt={t('questionImageAlt')}
                       className="max-w-full h-auto rounded-lg"
                     />
                   </div>
@@ -459,7 +480,7 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
             onClick={handleSubmit}
             disabled={submitting}
           >
-            {submitting ? 'Submitting...' : 'Submit Quiz'}
+            {submitting ? t('submitting') : t('submitQuiz')}
           </Button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getTranslations } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,7 @@ import { LevelRedirectSection } from './level-redirect-section'
 import { PublishButton } from './publish-button'
 import { FeedbackSettingsSection } from './feedback-settings-section'
 import { SessionManager } from './session-manager'
+import { DeleteQuizButton } from './delete-quiz-button'
 
 export default async function AssignmentPage({
   params,
@@ -17,6 +19,7 @@ export default async function AssignmentPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  const t = await getTranslations('assignment')
   const supabase = await createClient()
 
   const { data: assignment } = await supabase
@@ -56,15 +59,16 @@ export default async function AssignmentPage({
               {assignment.status}
             </Badge>
           </div>
-          <p className="text-gray-600">{assignment.description || 'No description'}</p>
+          <p className="text-gray-600">{assignment.description || t('noDescription')}</p>
         </div>
         <div className="flex gap-2">
           <Link href="/teacher">
-            <Button variant="outline">Back to Dashboard</Button>
+            <Button variant="outline">{t('backToDashboard')}</Button>
           </Link>
           <Link href={`/teacher/assignments/${id}/submissions`}>
-            <Button variant="outline">View Submissions</Button>
+            <Button variant="outline">{t('viewSubmissions')}</Button>
           </Link>
+          <DeleteQuizButton assignmentId={id} assignmentTitle={assignment.title} />
           <PublishButton assignment={assignment} questionCount={questions?.length || 0} />
         </div>
       </div>
@@ -72,9 +76,9 @@ export default async function AssignmentPage({
       {/* Sessions Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Sessions</CardTitle>
+          <CardTitle>{t('sections.sessions')}</CardTitle>
           <CardDescription>
-            Organize questions into sequential sessions for multi-step quizzes
+            {t('sections.sessionsDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -86,9 +90,9 @@ export default async function AssignmentPage({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Questions</CardTitle>
+            <CardTitle>{t('sections.questions')}</CardTitle>
             <CardDescription>
-              Add MCQ, open-ended, slider, or image map questions by session
+              {t('sections.questionsDescription')}
             </CardDescription>
           </div>
         </CardHeader>
@@ -100,9 +104,9 @@ export default async function AssignmentPage({
       {/* Level Redirects */}
       <Card>
         <CardHeader>
-          <CardTitle>Level Redirects</CardTitle>
+          <CardTitle>{t('sections.levelRedirects')}</CardTitle>
           <CardDescription>
-            Configure where to redirect students based on their level
+            {t('sections.levelRedirectsDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -113,9 +117,9 @@ export default async function AssignmentPage({
       {/* Student Feedback Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>Student Feedback Settings</CardTitle>
+          <CardTitle>{t('sections.feedbackSettings')}</CardTitle>
           <CardDescription>
-            Control what information students see after completing the quiz
+            {t('sections.feedbackSettingsDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -130,9 +134,9 @@ export default async function AssignmentPage({
       {/* Share Links */}
       <Card>
         <CardHeader>
-          <CardTitle>Share Links</CardTitle>
+          <CardTitle>{t('sections.shareLinks')}</CardTitle>
           <CardDescription>
-            Generate links for students to access this quiz
+            {t('sections.shareLinksDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>

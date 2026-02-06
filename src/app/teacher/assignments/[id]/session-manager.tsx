@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -28,6 +29,8 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
   const [form, setForm] = useState<SessionFormState>({ title: '', description: '' })
   const [editForm, setEditForm] = useState<SessionFormState>({ title: '', description: '' })
   const router = useRouter()
+  const t = useTranslations('sessions')
+  const tc = useTranslations('common')
 
   const fetchSessions = async () => {
     setLoading(true)
@@ -36,11 +39,11 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
       const response = await fetch(`/api/sessions?assignmentId=${assignmentId}`)
       const data = await response.json()
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to load sessions')
+        throw new Error(data.error || t('failedToLoad'))
       }
       setSessions(data.sessions || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load sessions')
+      setError(err instanceof Error ? err.message : t('failedToLoad'))
     } finally {
       setLoading(false)
     }
@@ -61,7 +64,7 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
 
   const handleCreate = async () => {
     if (!form.title.trim()) {
-      setError('Session title is required')
+      setError(t('titleRequired'))
       return
     }
     setCreating(true)
@@ -78,13 +81,13 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
       })
       const data = await response.json()
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create session')
+        throw new Error(data.error || t('failedToCreate'))
       }
       setForm({ title: '', description: '' })
       await fetchSessions()
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create session')
+      setError(err instanceof Error ? err.message : t('failedToCreate'))
     } finally {
       setCreating(false)
     }
@@ -105,7 +108,7 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
 
   const saveEdit = async (sessionId: string) => {
     if (!editForm.title.trim()) {
-      setError('Session title is required')
+      setError(t('titleRequired'))
       return
     }
     setError(null)
@@ -119,7 +122,7 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
     })
     const data = await response.json()
     if (!response.ok) {
-      setError(data.error || 'Failed to update session')
+      setError(data.error || t('failedToUpdate'))
       return
     }
     setEditingId(null)
@@ -129,12 +132,12 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
   }
 
   const deleteSession = async (sessionId: string) => {
-    if (!confirm('Delete this session? Questions will be unassigned.')) return
+    if (!confirm(t('deleteConfirm'))) return
     setError(null)
     const response = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' })
     const data = await response.json()
     if (!response.ok) {
-      setError(data.error || 'Failed to delete session')
+      setError(data.error || t('failedToDelete'))
       return
     }
     await fetchSessions()
@@ -153,7 +156,7 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
     })
     const data = await response.json()
     if (!response.ok) {
-      setError(data.error || 'Failed to reorder sessions')
+      setError(data.error || t('failedToReorder'))
       await fetchSessions()
       return
     }
@@ -171,7 +174,7 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
   }
 
   if (loading) {
-    return <p className="text-gray-500">Loading sessions...</p>
+    return <p className="text-gray-500">{t('loading')}</p>
   }
 
   return (
@@ -185,32 +188,32 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="session-title">New Session Title</Label>
+            <Label htmlFor="session-title">{t('newTitle')}</Label>
             <Input
               id="session-title"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="e.g., Session 1: Basics"
+              placeholder={t('titlePlaceholder')}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="session-desc">Description (optional)</Label>
+            <Label htmlFor="session-desc">{t('description')}</Label>
             <Textarea
               id="session-desc"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Shown to students before the session"
+              placeholder={t('descriptionPlaceholder')}
               rows={2}
             />
           </div>
           <Button onClick={handleCreate} disabled={creating}>
-            {creating ? 'Creating...' : 'Add Session'}
+            {creating ? t('creating') : t('addSession')}
           </Button>
         </CardContent>
       </Card>
 
       {sessions.length === 0 ? (
-        <p className="text-gray-500">No sessions yet. Create your first session above.</p>
+        <p className="text-gray-500">{t('noSessions')}</p>
       ) : (
         <div className="space-y-3">
           {sessions.map((session, index) => {
@@ -222,14 +225,14 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
                   {isEditing ? (
                     <>
                       <div className="space-y-2">
-                        <Label>Title</Label>
+                        <Label>{t('title')}</Label>
                         <Input
                           value={editForm.title}
                           onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Description</Label>
+                        <Label>{t('descriptionLabel')}</Label>
                         <Textarea
                           value={editForm.description}
                           onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
@@ -237,8 +240,8 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
                         />
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={() => saveEdit(session.id)}>Save</Button>
-                        <Button size="sm" variant="outline" onClick={cancelEdit}>Cancel</Button>
+                        <Button size="sm" onClick={() => saveEdit(session.id)}>{t('save')}</Button>
+                        <Button size="sm" variant="outline" onClick={cancelEdit}>{t('cancel')}</Button>
                       </div>
                     </>
                   ) : (
@@ -250,7 +253,7 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
                             <p className="text-sm text-gray-600">{session.description}</p>
                           )}
                           <p className="text-xs text-gray-500 mt-1">
-                            {count} question{count !== 1 ? 's' : ''}
+                            {t('questionCount', { count })}
                           </p>
                         </div>
                         <div className="flex gap-2">
@@ -260,7 +263,7 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
                             onClick={() => moveSession(index, 'up')}
                             disabled={index === 0}
                           >
-                            Up
+                            {t('up')}
                           </Button>
                           <Button
                             size="sm"
@@ -268,13 +271,13 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
                             onClick={() => moveSession(index, 'down')}
                             disabled={index === sessions.length - 1}
                           >
-                            Down
+                            {t('down')}
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => startEdit(session)}>
-                            Edit
+                            {t('edit')}
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => deleteSession(session.id)}>
-                            Delete
+                            {tc('delete')}
                           </Button>
                         </div>
                       </div>
