@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import type { StudentGender } from '@/lib/supabase/types'
+
+const VALID_GENDERS: StudentGender[] = ['male', 'female', 'non_binary', 'prefer_not_to_say']
 
 // POST /api/journey - Start a new student journey
 export async function POST(request: NextRequest) {
@@ -7,11 +10,26 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
 
     const body = await request.json()
-    const { assignmentId, shareLinkId, studentName, studentEmail } = body
+    const { assignmentId, shareLinkId, studentName, studentEmail, studentAge, studentGender } = body
 
     if (!assignmentId) {
       return NextResponse.json(
         { error: 'assignmentId is required' },
+        { status: 400 }
+      )
+    }
+
+    const ageValue = typeof studentAge === 'number' ? studentAge : null
+    if (ageValue === null || !Number.isInteger(ageValue) || ageValue < 5 || ageValue > 100) {
+      return NextResponse.json(
+        { error: 'A valid age between 5 and 100 is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!studentGender || !VALID_GENDERS.includes(studentGender as StudentGender)) {
+      return NextResponse.json(
+        { error: 'A valid gender is required' },
         { status: 400 }
       )
     }
@@ -60,6 +78,8 @@ export async function POST(request: NextRequest) {
         share_link_id: shareLinkId || null,
         student_name: studentName || null,
         student_email: studentEmail || null,
+        student_age: ageValue,
+        student_gender: studentGender as StudentGender,
         current_session_index: 0,
         overall_status: 'in_progress',
         total_score: 0,

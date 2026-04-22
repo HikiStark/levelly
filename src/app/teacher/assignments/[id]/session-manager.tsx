@@ -18,6 +18,7 @@ interface SessionManagerProps {
 interface SessionFormState {
   title: string
   description: string
+  guidanceNote: string
 }
 
 export function SessionManager({ assignmentId, questions }: SessionManagerProps) {
@@ -26,8 +27,8 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<SessionFormState>({ title: '', description: '' })
-  const [editForm, setEditForm] = useState<SessionFormState>({ title: '', description: '' })
+  const [form, setForm] = useState<SessionFormState>({ title: '', description: '', guidanceNote: '' })
+  const [editForm, setEditForm] = useState<SessionFormState>({ title: '', description: '', guidanceNote: '' })
   const router = useRouter()
   const t = useTranslations('sessions')
   const tc = useTranslations('common')
@@ -83,7 +84,7 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
       if (!response.ok) {
         throw new Error(data.error || t('failedToCreate'))
       }
-      setForm({ title: '', description: '' })
+      setForm({ title: '', description: '', guidanceNote: '' })
       await fetchSessions()
       router.refresh()
     } catch (err) {
@@ -98,12 +99,13 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
     setEditForm({
       title: session.title,
       description: session.description || '',
+      guidanceNote: session.guidance_note || '',
     })
   }
 
   const cancelEdit = () => {
     setEditingId(null)
-    setEditForm({ title: '', description: '' })
+    setEditForm({ title: '', description: '', guidanceNote: '' })
   }
 
   const saveEdit = async (sessionId: string) => {
@@ -118,6 +120,7 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
       body: JSON.stringify({
         title: editForm.title.trim(),
         description: editForm.description.trim() || null,
+        guidanceNote: editForm.guidanceNote.trim() || null,
       }),
     })
     const data = await response.json()
@@ -126,7 +129,7 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
       return
     }
     setEditingId(null)
-    setEditForm({ title: '', description: '' })
+    setEditForm({ title: '', description: '', guidanceNote: '' })
     await fetchSessions()
     router.refresh()
   }
@@ -239,6 +242,15 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
                           rows={2}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label>{t('guidanceNote')}</Label>
+                        <Textarea
+                          value={editForm.guidanceNote}
+                          onChange={(e) => setEditForm({ ...editForm, guidanceNote: e.target.value })}
+                          placeholder={t('guidanceNotePlaceholder')}
+                          rows={3}
+                        />
+                      </div>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => saveEdit(session.id)}>{t('save')}</Button>
                         <Button size="sm" variant="outline" onClick={cancelEdit}>{t('cancel')}</Button>
@@ -251,6 +263,11 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
                           <p className="text-lg font-medium">{session.title}</p>
                           {session.description && (
                             <p className="text-sm text-gray-600">{session.description}</p>
+                          )}
+                          {session.guidance_note && (
+                            <p className="text-xs text-blue-700 mt-1 italic">
+                              {t('guidanceNote')}: {session.guidance_note.length > 80 ? `${session.guidance_note.slice(0, 80)}…` : session.guidance_note}
+                            </p>
                           )}
                           <p className="text-xs text-gray-500 mt-1">
                             {t('questionCount', { count })}

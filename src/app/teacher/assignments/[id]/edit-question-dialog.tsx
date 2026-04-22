@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Question, Session, SliderConfig } from '@/lib/supabase/types'
+import { LikertConfig, Question, Session, SliderConfig } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -56,6 +56,9 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
   const [sliderStep, setSliderStep] = useState(1)
   const [sliderCorrectValue, setSliderCorrectValue] = useState(50)
   const [sliderTolerance, setSliderTolerance] = useState(0)
+  const [likertScale, setLikertScale] = useState(5)
+  const [likertMinLabel, setLikertMinLabel] = useState('')
+  const [likertMaxLabel, setLikertMaxLabel] = useState('')
 
   const router = useRouter()
   const supabase = createClient()
@@ -109,6 +112,15 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
         setSliderStep(cfg.step)
         setSliderCorrectValue(cfg.correct_value)
         setSliderTolerance(cfg.tolerance)
+      }
+    }
+
+    if (question.type === 'likert') {
+      const cfg = question.likert_config as LikertConfig | null
+      if (cfg) {
+        setLikertScale(cfg.scale)
+        setLikertMinLabel(cfg.min_label || '')
+        setLikertMaxLabel(cfg.max_label || '')
       }
     }
   }
@@ -207,6 +219,20 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
       }
     }
 
+    if (question.type === 'likert') {
+      if (!Number.isInteger(likertScale) || likertScale < 2 || likertScale > 11) {
+        setError('Scale must be an integer between 2 and 11.')
+        setSaving(false)
+        return
+      }
+      updateData.has_correct_answer = false
+      updateData.likert_config = {
+        scale: likertScale,
+        min_label: likertMinLabel.trim() || 'Strongly Disagree',
+        max_label: likertMaxLabel.trim() || 'Strongly Agree',
+      }
+    }
+
     const { error: updateError } = await supabase
       .from('question')
       .update(updateData)
@@ -291,7 +317,7 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
             )}
           </div>
 
-          {question.type !== 'image_map' && (
+          {question.type !== 'image_map' && question.type !== 'likert' && (
             <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
               <div className="space-y-0.5">
                 <Label htmlFor={`edit-has-correct-${question.id}`}>Has Correct Answer</Label>
@@ -427,6 +453,46 @@ export function EditQuestionDialog({ question, assignmentId, questions }: EditQu
                   This open-ended question won&apos;t be auto-graded.
                 </p>
               )}
+            </div>
+          )}
+
+          {question.type === 'likert' && (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-500">
+                Likert questions are surveys and are not auto-graded.
+              </p>
+              <div className="space-y-1">
+                <Label htmlFor={`edit-likert-scale-${question.id}`}>Scale (number of points)</Label>
+                <Input
+                  id={`edit-likert-scale-${question.id}`}
+                  type="number"
+                  min={2}
+                  max={11}
+                  value={likertScale}
+                  onChange={(e) => setLikertScale(parseInt(e.target.value, 10) || 5)}
+                  className="w-24"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor={`edit-likert-min-${question.id}`}>Low-end label</Label>
+                  <Input
+                    id={`edit-likert-min-${question.id}`}
+                    placeholder="Strongly Disagree"
+                    value={likertMinLabel}
+                    onChange={(e) => setLikertMinLabel(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor={`edit-likert-max-${question.id}`}>High-end label</Label>
+                  <Input
+                    id={`edit-likert-max-${question.id}`}
+                    placeholder="Strongly Agree"
+                    value={likertMaxLabel}
+                    onChange={(e) => setLikertMaxLabel(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
           )}
 

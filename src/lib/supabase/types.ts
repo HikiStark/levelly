@@ -7,7 +7,18 @@ export type Json =
   | Json[]
 
 // Question type enum
-export type QuestionType = 'mcq' | 'open' | 'slider' | 'image_map'
+export type QuestionType = 'mcq' | 'open' | 'slider' | 'image_map' | 'likert'
+
+// Student gender enum (matches CHECK constraint on student_journey.student_gender)
+export type StudentGender = 'male' | 'female' | 'non_binary' | 'prefer_not_to_say'
+
+// Likert configuration for likert questions
+export interface LikertConfig {
+  scale: number // number of points (3, 5, 7 most common)
+  min_label?: string // e.g. "Strongly Disagree"
+  max_label?: string // e.g. "Strongly Agree"
+  labels?: string[] // optional label per point, length must equal scale
+}
 
 // Slider configuration for slider questions
 export interface SliderConfig {
@@ -55,6 +66,7 @@ export interface Database {
           assignment_id: string
           title: string
           description: string | null
+          guidance_note: string | null
           order_index: number
           created_at: string
         }
@@ -63,6 +75,7 @@ export interface Database {
           assignment_id: string
           title: string
           description?: string | null
+          guidance_note?: string | null
           order_index: number
           created_at?: string
         }
@@ -71,6 +84,7 @@ export interface Database {
           assignment_id?: string
           title?: string
           description?: string | null
+          guidance_note?: string | null
           order_index?: number
           created_at?: string
         }
@@ -82,6 +96,8 @@ export interface Database {
           share_link_id: string | null
           student_name: string | null
           student_email: string | null
+          student_age: number | null
+          student_gender: StudentGender | null
           current_session_index: number
           overall_status: JourneyStatus
           overall_level: string | null
@@ -96,6 +112,8 @@ export interface Database {
           share_link_id?: string | null
           student_name?: string | null
           student_email?: string | null
+          student_age?: number | null
+          student_gender?: StudentGender | null
           current_session_index?: number
           overall_status?: JourneyStatus
           overall_level?: string | null
@@ -110,6 +128,8 @@ export interface Database {
           share_link_id?: string | null
           student_name?: string | null
           student_email?: string | null
+          student_age?: number | null
+          student_gender?: StudentGender | null
           current_session_index?: number
           overall_status?: JourneyStatus
           overall_level?: string | null
@@ -158,6 +178,7 @@ export interface Database {
           created_at: string
           show_correct_answers: boolean
           show_ai_feedback: boolean
+          show_results: boolean
         }
         Insert: {
           id?: string
@@ -168,6 +189,7 @@ export interface Database {
           created_at?: string
           show_correct_answers?: boolean
           show_ai_feedback?: boolean
+          show_results?: boolean
         }
         Update: {
           id?: string
@@ -178,6 +200,7 @@ export interface Database {
           created_at?: string
           show_correct_answers?: boolean
           show_ai_feedback?: boolean
+          show_results?: boolean
         }
       }
       question: {
@@ -198,6 +221,7 @@ export interface Database {
           image_url: string | null
           slider_config: SliderConfig | null
           image_map_config: ImageMapConfig | null
+          likert_config: LikertConfig | null
         }
         Insert: {
           id?: string
@@ -216,6 +240,7 @@ export interface Database {
           image_url?: string | null
           slider_config?: SliderConfig | null
           image_map_config?: ImageMapConfig | null
+          likert_config?: LikertConfig | null
         }
         Update: {
           id?: string
@@ -234,6 +259,7 @@ export interface Database {
           image_url?: string | null
           slider_config?: SliderConfig | null
           image_map_config?: ImageMapConfig | null
+          likert_config?: LikertConfig | null
         }
       }
       share_link: {
@@ -271,6 +297,8 @@ export interface Database {
           share_link_id: string | null
           student_name: string | null
           student_email: string | null
+          student_age: number | null
+          student_gender: StudentGender | null
           status: 'in_progress' | 'submitted' | 'grading' | 'graded'
           started_at: string
           submitted_at: string | null
@@ -293,6 +321,8 @@ export interface Database {
           share_link_id?: string | null
           student_name?: string | null
           student_email?: string | null
+          student_age?: number | null
+          student_gender?: StudentGender | null
           status?: 'in_progress' | 'submitted' | 'grading' | 'graded'
           started_at?: string
           submitted_at?: string | null
@@ -315,6 +345,8 @@ export interface Database {
           share_link_id?: string | null
           student_name?: string | null
           student_email?: string | null
+          student_age?: number | null
+          student_gender?: StudentGender | null
           status?: 'in_progress' | 'submitted' | 'grading' | 'graded'
           started_at?: string
           submitted_at?: string | null

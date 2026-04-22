@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { getTranslations } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -37,11 +36,23 @@ export default async function SubmissionsPage({
     notFound()
   }
 
-  const { data: attempts } = await supabase
-    .from('attempt')
-    .select('*')
-    .eq('assignment_id', id)
-    .order('submitted_at', { ascending: false })
+  const [{ data: attempts }, { data: sessions }, { data: journeys }] = await Promise.all([
+    supabase
+      .from('attempt')
+      .select('*')
+      .eq('assignment_id', id)
+      .order('submitted_at', { ascending: false }),
+    supabase
+      .from('session')
+      .select('id, title, order_index')
+      .eq('assignment_id', id)
+      .order('order_index', { ascending: true }),
+    supabase
+      .from('student_journey')
+      .select('*')
+      .eq('assignment_id', id)
+      .order('started_at', { ascending: false }),
+  ])
 
   const submittedAttempts = attempts?.filter(a => a.status !== 'in_progress') || []
   const inProgressAttempts = attempts?.filter(a => a.status === 'in_progress') || []
@@ -101,7 +112,12 @@ export default async function SubmissionsPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <SubmissionsTable attempts={attempts || []} assignmentId={id} />
+          <SubmissionsTable
+            attempts={attempts || []}
+            assignmentId={id}
+            sessions={sessions || []}
+            journeys={journeys || []}
+          />
         </CardContent>
       </Card>
 
@@ -111,7 +127,7 @@ export default async function SubmissionsPage({
           <CardHeader>
             <CardTitle>In Progress</CardTitle>
             <CardDescription>
-              Students who started but haven't submitted yet
+              Students who started but haven&apos;t submitted yet
             </CardDescription>
           </CardHeader>
           <CardContent>

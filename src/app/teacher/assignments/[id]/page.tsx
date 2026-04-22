@@ -12,6 +12,7 @@ import { PublishButton } from './publish-button'
 import { FeedbackSettingsSection } from './feedback-settings-section'
 import { SessionManager } from './session-manager'
 import { DeleteQuizButton } from './delete-quiz-button'
+import { EditDetailsDialog } from './edit-details-dialog'
 
 export default async function AssignmentPage({
   params,
@@ -58,6 +59,11 @@ export default async function AssignmentPage({
             <Badge variant={assignment.status === 'published' ? 'default' : 'secondary'}>
               {assignment.status}
             </Badge>
+            <EditDetailsDialog
+              assignmentId={id}
+              initialTitle={assignment.title}
+              initialDescription={assignment.description}
+            />
           </div>
           <p className="text-gray-600">{assignment.description || t('noDescription')}</p>
         </div>
@@ -127,6 +133,7 @@ export default async function AssignmentPage({
             assignmentId={id}
             showCorrectAnswers={assignment.show_correct_answers ?? true}
             showAiFeedback={assignment.show_ai_feedback ?? true}
+            showResults={assignment.show_results ?? true}
           />
         </CardContent>
       </Card>

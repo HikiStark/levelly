@@ -27,6 +27,8 @@ function getTypeBadge(type: string) {
       return { label: 'Slider', variant: 'outline' as const }
     case 'image_map':
       return { label: 'Image Map', variant: 'outline' as const }
+    case 'likert':
+      return { label: 'Likert', variant: 'outline' as const }
     default:
       return { label: type, variant: 'secondary' as const }
   }
@@ -203,6 +205,14 @@ export function QuestionList({ questions, assignmentId, selectedSessionId }: Que
                         </p>
                       )}
                     </div>
+                  )}
+
+                  {question.type === 'likert' && question.likert_config && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      {question.likert_config.scale}-point scale
+                      {question.likert_config.min_label && ` · ${question.likert_config.min_label}`}
+                      {question.likert_config.max_label && ` → ${question.likert_config.max_label}`}
+                    </p>
                   )}
 
                   {question.type === 'image_map' && imageMapConfig && (

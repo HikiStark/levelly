@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,7 @@ interface RedirectInfo {
 interface FeedbackSettings {
   showCorrectAnswers: boolean
   showAiFeedback: boolean
+  showResults: boolean
 }
 
 interface AttemptData {
@@ -57,6 +59,7 @@ interface AttemptData {
       has_correct_answer: boolean
       slider_config: { min: number; max: number; correct_value: number; tolerance: number } | null
       image_map_config: { base_image_url: string; flags: { id: string; label: string; answer_type: string; points: number }[] } | null
+      likert_config: { scale: number; min_label?: string; max_label?: string; labels?: string[] } | null
       image_url: string | null
     }
   }[]
@@ -79,12 +82,16 @@ export default function ResultsPage({
   params: Promise<{ attemptId: string }>
 }) {
   const { attemptId } = use(params)
+  const t = useTranslations('results')
+  const tq = useTranslations('quiz')
   const [attempt, setAttempt] = useState<AttemptData | null>(null)
   const [redirectInfo, setRedirectInfo] = useState<RedirectInfo | null>(null)
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettings>({
     showCorrectAnswers: true,
     showAiFeedback: true,
+    showResults: true,
   })
+  const [guidanceNote, setGuidanceNote] = useState<string | null>(null)
   const [shareLinkToken, setShareLinkToken] = useState<string | null>(null)
   const [journeyInfo, setJourneyInfo] = useState<JourneyStatusResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -118,7 +125,9 @@ export default function ResultsPage({
         setFeedbackSettings(data.feedbackSettings || {
           showCorrectAnswers: true,
           showAiFeedback: true,
+          showResults: true,
         })
+        setGuidanceNote(data.guidanceNote || null)
         setLoading(false)
 
         if (data.attempt.journey_id) {
@@ -214,9 +223,39 @@ export default function ResultsPage({
   const currentIndex = journeyInfo?.journey.current_session_index ?? 0
   const hasNextSession = totalSessions > 0 && currentIndex < totalSessions - 1
 
+  if (!feedbackSettings.showResults) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('submittedTitle')}</CardTitle>
+              <CardDescription>{t('submittedDesc')}</CardDescription>
+            </CardHeader>
+            {(guidanceNote || (attempt.is_final && attempt.journey_id && hasNextSession)) && (
+              <CardContent className="space-y-4">
+                {guidanceNote && (
+                  <div className="rounded-md bg-blue-50 border border-blue-200 p-4">
+                    <p className="text-sm font-medium text-blue-900 mb-1">{t('guidanceTitle')}</p>
+                    <p className="text-sm text-blue-900 whitespace-pre-line">{guidanceNote}</p>
+                  </div>
+                )}
+                {attempt.is_final && attempt.journey_id && hasNextSession && (
+                  <Button className="w-full" size="lg" onClick={handleNextSession}>
+                    {tq('startQuiz')}
+                  </Button>
+                )}
+              </CardContent>
+            )}
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <Card>
           <CardHeader>
@@ -314,6 +353,14 @@ export default function ResultsPage({
                     <EmbedRenderer htmlContent={redirectInfo.embedCode} />
                   </div>
                 ) : null}
+              </div>
+            )}
+
+            {/* Teacher guidance note */}
+            {attempt.is_final && guidanceNote && (
+              <div className="mt-6 rounded-md bg-blue-50 border border-blue-200 p-4">
+                <p className="text-sm font-medium text-blue-900 mb-1">{t('guidanceTitle')}</p>
+                <p className="text-sm text-blue-900 whitespace-pre-line">{guidanceNote}</p>
               </div>
             )}
 
@@ -430,6 +477,22 @@ export default function ResultsPage({
                       {ans.ai_feedback && feedbackSettings.showAiFeedback && (
                         <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded whitespace-pre-line">
                           Feedback: {ans.ai_feedback}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Likert Answer */}
+                  {ans.question?.type === 'likert' && ans.question.likert_config && (
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <p>
+                        Your response: {ans.slider_value != null
+                          ? `${ans.slider_value} / ${ans.question.likert_config.scale}`
+                          : 'Not answered'}
+                      </p>
+                      {ans.slider_value != null && (
+                        <p className="text-xs text-gray-400">
+                          {ans.question.likert_config.min_label} — {ans.question.likert_config.max_label}
                         </p>
                       )}
                     </div>

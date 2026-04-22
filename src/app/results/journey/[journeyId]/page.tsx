@@ -15,6 +15,7 @@ interface JourneySummaryResponse {
   assignment: {
     title: string
     description: string | null
+    show_results?: boolean
   }
   sessionResults: {
     session: { id: string; title: string; order_index: number; description: string | null }
@@ -95,9 +96,28 @@ export default function JourneyResultsPage({
 
   const level = data.summary.overallLevel as Level
 
+  if (data.assignment.show_results === false) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{data.assignment.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">
+                Thank you for completing all sessions. Your teacher has chosen not to share detailed results.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>{t('title', { quizTitle: data.assignment.title })}</CardTitle>

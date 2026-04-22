@@ -27,7 +27,7 @@ export async function GET(
     // Get all sessions for this assignment
     const { data: sessions, error: sessionsError } = await supabase
       .from('session')
-      .select('id, title, order_index, description')
+      .select('id, title, order_index, description, guidance_note')
       .eq('assignment_id', journey.assignment_id)
       .order('order_index', { ascending: true })
 

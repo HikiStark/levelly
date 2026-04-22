@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Question, Session } from '@/lib/supabase/types'
+import { Question, Session, StudentGender } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,6 +13,7 @@ import { MCQQuestion } from './mcq-question'
 import { OpenQuestion } from './open-question'
 import { SliderQuestion } from './slider-question'
 import { ImageMapQuestion } from './image-map-question'
+import { LikertQuestion } from './likert-question'
 import { SessionProgressBar } from '@/components/session-progress-bar'
 import { SessionMap } from '@/components/session-map'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -54,6 +55,8 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
   const [consentGiven, setConsentGiven] = useState(false)
   const [studentName, setStudentName] = useState('')
   const [studentEmail, setStudentEmail] = useState('')
+  const [studentAge, setStudentAge] = useState<string>('')
+  const [studentGender, setStudentGender] = useState<StudentGender | ''>('')
   const [answers, setAnswers] = useState<AnswerState>({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -180,8 +183,17 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
     })
   }
 
+  const ageNumber = Number(studentAge)
+  const ageValid = Number.isInteger(ageNumber) && ageNumber >= 5 && ageNumber <= 100
+  const genderValid = studentGender !== ''
+  const entranceValid = consentGiven && ageValid && genderValid
+
   const handleStart = async () => {
     setError(null)
+    if (!entranceValid) {
+      setError(t('requiredField'))
+      return
+    }
     if (sessions.length === 0) {
       setStarted(true)
       return
@@ -196,6 +208,8 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
           shareLinkId,
           studentName: studentName || null,
           studentEmail: studentEmail || null,
+          studentAge: ageNumber,
+          studentGender,
         }),
       })
 
@@ -232,6 +246,8 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
           journeyId,
           studentName: studentName || null,
           studentEmail: studentEmail || null,
+          studentAge: ageNumber,
+          studentGender: studentGender || null,
           answers: Object.entries(answers).map(([questionId, answer]) => ({
             questionId,
             selectedChoice: answer.selectedChoice || null,
@@ -303,6 +319,9 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-3xl mx-auto space-y-6">
+          <div className="flex justify-end">
+            <LanguageToggle />
+          </div>
           <Card>
             <CardHeader>
               <CardTitle>{assignment.title}</CardTitle>
@@ -339,6 +358,44 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
                     onChange={(e) => setStudentEmail(e.target.value)}
                   />
                 </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="age">
+                      {t('yourAge')} <span className="text-red-600">*</span>
+                    </Label>
+                    <Input
+                      id="age"
+                      type="number"
+                      min={5}
+                      max={100}
+                      required
+                      placeholder={t('enterAge')}
+                      value={studentAge}
+                      onChange={(e) => setStudentAge(e.target.value)}
+                    />
+                    {studentAge !== '' && !ageValid && (
+                      <p className="text-xs text-red-600">{t('ageRangeHint')}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">
+                      {t('yourGender')} <span className="text-red-600">*</span>
+                    </Label>
+                    <select
+                      id="gender"
+                      required
+                      value={studentGender}
+                      onChange={(e) => setStudentGender(e.target.value as StudentGender | '')}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white"
+                    >
+                      <option value="">{t('selectGender')}</option>
+                      <option value="male">{t('genderMale')}</option>
+                      <option value="female">{t('genderFemale')}</option>
+                      <option value="non_binary">{t('genderNonBinary')}</option>
+                      <option value="prefer_not_to_say">{t('genderPreferNotToSay')}</option>
+                    </select>
+                  </div>
+                </div>
               </div>
               <div className="flex items-start gap-3 pt-2">
                 <Checkbox
@@ -353,7 +410,7 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
                   {t('consent')}
                 </Label>
               </div>
-              <Button onClick={handleStart} className="w-full mt-6" disabled={!consentGiven}>
+              <Button onClick={handleStart} className="w-full mt-6" disabled={!entranceValid}>
                 {t('startQuiz')}
               </Button>
             </CardContent>
@@ -467,6 +524,14 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
                     onAnswerChange={(flagId, answer) =>
                       handleImageMapChange(question.id, flagId, answer)
                     }
+                  />
+                )}
+
+                {question.type === 'likert' && (
+                  <LikertQuestion
+                    question={question}
+                    value={answers[question.id]?.sliderValue}
+                    onChange={(value) => handleSliderChange(question.id, value)}
                   />
                 )}
               </CardContent>

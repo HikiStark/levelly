@@ -162,7 +162,7 @@ export default async function SubmissionDetailPage({
         <CardHeader>
           <CardTitle>Detailed Answers</CardTitle>
           <CardDescription>
-            Review each question and the student's response
+            Review each question and the student&apos;s response
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -171,9 +171,19 @@ export default async function SubmissionDetailPage({
             if (!question) return null
 
             const isMcq = question.type === 'mcq'
+            const isSlider = question.type === 'slider'
+            const isLikert = question.type === 'likert'
+            const isImageMap = question.type === 'image_map'
+            const isOpen = question.type === 'open'
             const isUngraded = question.has_correct_answer === false
-            const isCorrect = !isUngraded && (isMcq ? answer.is_correct : (answer.score === question.points))
+            const isCorrect = !isUngraded && (isMcq || isSlider ? answer.is_correct : (answer.score === question.points))
             const isPartial = !isUngraded && !isMcq && answer.score !== null && answer.score > 0 && answer.score < question.points
+            const typeLabel =
+              isMcq ? 'MCQ'
+              : isSlider ? 'Slider'
+              : isLikert ? 'Likert'
+              : isImageMap ? 'Image Map'
+              : 'Open-ended'
 
             return (
               <div
@@ -185,7 +195,7 @@ export default async function SubmissionDetailPage({
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant="outline" className="text-xs">
-                        {isMcq ? 'MCQ' : 'Open-ended'}
+                        {typeLabel}
                       </Badge>
                       <span className="text-sm text-gray-500">
                         {question.points} point{question.points !== 1 ? 's' : ''}
@@ -221,7 +231,9 @@ export default async function SubmissionDetailPage({
                               key={choice.id}
                               className={`p-2 rounded text-sm flex items-center gap-2 ${
                                 isUngraded
-                                  ? 'bg-gray-50'
+                                  ? isSelected
+                                    ? 'bg-blue-50 border border-blue-200'
+                                    : 'bg-gray-50'
                                   : isSelected && isCorrectChoice
                                   ? 'bg-green-50 border border-green-200'
                                   : isSelected && !isCorrectChoice
@@ -233,6 +245,9 @@ export default async function SubmissionDetailPage({
                             >
                               <span className="font-medium uppercase">{choice.id}.</span>
                               <span className="flex-1">{choice.text}</span>
+                              {isUngraded && isSelected && (
+                                <span className="text-blue-700 font-medium">Student answer</span>
+                              )}
                               {!isUngraded && isSelected && (
                                 <span className={isCorrectChoice ? 'text-green-600' : 'text-red-600'}>
                                   {isCorrectChoice ? 'Student answer (Correct)' : 'Student answer'}
@@ -252,12 +267,69 @@ export default async function SubmissionDetailPage({
                   </div>
                 )}
 
+                {/* Slider / Likert Answer */}
+                {(isSlider || isLikert) && (() => {
+                  const likertCfg = (question as { likert_config?: { scale: number; min_label?: string; max_label?: string } | null }).likert_config
+                  return (
+                    <div className="space-y-3 pl-4 border-l-2 border-gray-200">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">Student&apos;s Answer:</p>
+                        <div className="p-3 bg-gray-50 rounded text-sm">
+                          {answer.slider_value != null ? (
+                            <>
+                              <span className="font-medium">{answer.slider_value}</span>
+                              {isLikert && likertCfg && (
+                                <span className="text-gray-500 ml-2">
+                                  / {likertCfg.scale}
+                                  {likertCfg.min_label && likertCfg.max_label && ` · ${likertCfg.min_label} → ${likertCfg.max_label}`}
+                                </span>
+                              )}
+                              {isSlider && !isUngraded && question.slider_config && (
+                                <span className="text-gray-500 ml-2">
+                                  (correct: {question.slider_config.correct_value}
+                                  {question.slider_config.tolerance > 0 && ` ±${question.slider_config.tolerance}`})
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-gray-400 italic">No answer provided</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Image Map Answer */}
+                {isImageMap && (
+                  <div className="space-y-3 pl-4 border-l-2 border-gray-200">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-1">Student&apos;s Answer:</p>
+                      <div className="p-3 bg-gray-50 rounded text-sm">
+                        {answer.image_map_answers && Object.keys(answer.image_map_answers).length > 0 ? (
+                          <pre className="whitespace-pre-wrap">{JSON.stringify(answer.image_map_answers, null, 2)}</pre>
+                        ) : (
+                          <span className="text-gray-400 italic">No answer provided</span>
+                        )}
+                      </div>
+                    </div>
+                    {answer.ai_feedback && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">AI Feedback:</p>
+                        <div className="p-3 bg-purple-50 rounded text-sm text-purple-900 whitespace-pre-line">
+                          {answer.ai_feedback}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Open-ended Answer */}
-                {!isMcq && (
+                {isOpen && (
                   <div className="space-y-3 pl-4 border-l-2 border-gray-200">
                     {/* Student's Answer */}
                     <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">Student's Answer:</p>
+                      <p className="text-sm font-medium text-gray-700 mb-1">Student&apos;s Answer:</p>
                       <div className="p-3 bg-gray-50 rounded text-sm">
                         {answer.answer_text || (
                           <span className="text-gray-400 italic">No answer provided</span>

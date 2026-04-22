@@ -10,6 +10,7 @@ interface AttemptWithRelations extends Attempt {
     title: string
     show_correct_answers: boolean
     show_ai_feedback: boolean
+    show_results: boolean
   } | null
   share_link: {
     token: string
@@ -18,6 +19,7 @@ interface AttemptWithRelations extends Attempt {
     id: string
     title: string
     order_index: number
+    guidance_note: string | null
   } | null
   answer: Array<{
     id: string
@@ -39,6 +41,7 @@ interface AttemptWithRelations extends Attempt {
       reference_answer: string | null
       slider_config: { min: number; max: number; correct_value: number; tolerance: number } | null
       image_map_config: { base_image_url: string; flags: { id: string; label: string; answer_type: string; points: number }[] } | null
+      likert_config: { scale: number; min_label?: string; max_label?: string; labels?: string[] } | null
       image_url: string | null
     } | null
   }>
@@ -71,13 +74,13 @@ export async function GET(
       .from('answer')
       .select(`
         *,
-        question(prompt, type, points, order_index, correct_choice, has_correct_answer, reference_answer, slider_config, image_map_config, image_url)
+        question(prompt, type, points, order_index, correct_choice, has_correct_answer, reference_answer, slider_config, image_map_config, likert_config, image_url)
       `)
       .eq('attempt_id', attemptBase.id)
 
     const assignmentQuery = supabase
       .from('assignment')
-      .select('title, show_correct_answers, show_ai_feedback')
+      .select('title, show_correct_answers, show_ai_feedback, show_results')
       .eq('id', attemptBase.assignment_id)
       .maybeSingle()
 
@@ -92,7 +95,7 @@ export async function GET(
     const sessionQuery = attemptBase.session_id
       ? supabase
           .from('session')
-          .select('id, title, order_index')
+          .select('id, title, order_index, guidance_note')
           .eq('id', attemptBase.session_id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null })
@@ -153,6 +156,7 @@ export async function GET(
     // Get feedback visibility settings
     const showCorrectAnswers = attempt.assignment?.show_correct_answers ?? true
     const showAiFeedback = attempt.assignment?.show_ai_feedback ?? true
+    const showResults = attempt.assignment?.show_results ?? true
 
     // Sanitize answers based on visibility settings
     const sanitizedAnswers = attempt.answer.map((ans) => {
@@ -194,7 +198,9 @@ export async function GET(
       feedbackSettings: {
         showCorrectAnswers,
         showAiFeedback,
+        showResults,
       },
+      guidanceNote: attempt.session?.guidance_note ?? null,
     })
   } catch (error) {
     console.error('Error fetching attempt:', error)

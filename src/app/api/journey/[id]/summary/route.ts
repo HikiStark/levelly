@@ -28,7 +28,7 @@ export async function GET(
     // Get the assignment
     const { data: assignment, error: assignmentError } = await supabase
       .from('assignment')
-      .select('id, title, description')
+      .select('id, title, description, show_results')
       .eq('id', journey.assignment_id)
       .single()
 

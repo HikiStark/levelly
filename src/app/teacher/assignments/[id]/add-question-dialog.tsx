@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Question, QuestionType, Session, SliderConfig } from '@/lib/supabase/types'
+import { LikertConfig, Question, QuestionType, Session, SliderConfig } from '@/lib/supabase/types'
 
 interface AddQuestionDialogProps {
   assignmentId: string
@@ -62,6 +62,11 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
   const [sliderStep, setSliderStep] = useState(1)
   const [sliderCorrectValue, setSliderCorrectValue] = useState(50)
   const [sliderTolerance, setSliderTolerance] = useState(5)
+
+  // Likert fields
+  const [likertScale, setLikertScale] = useState(5)
+  const [likertMinLabel, setLikertMinLabel] = useState('')
+  const [likertMaxLabel, setLikertMaxLabel] = useState('')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -107,6 +112,9 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
     setSliderStep(1)
     setSliderCorrectValue(50)
     setSliderTolerance(5)
+    setLikertScale(5)
+    setLikertMinLabel('')
+    setLikertMaxLabel('')
     setError(null)
   }
 
@@ -190,6 +198,20 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
         tolerance: hasCorrectAnswer ? sliderTolerance : 0,
       }
       questionData.slider_config = sliderConfig
+    } else if (questionType === 'likert') {
+      if (!Number.isInteger(likertScale) || likertScale < 2 || likertScale > 11) {
+        setError(t('maxGreaterThanMin'))
+        setLoading(false)
+        return
+      }
+      const likertConfig: LikertConfig = {
+        scale: likertScale,
+        min_label: likertMinLabel.trim() || t('likertDefaultMinLabel'),
+        max_label: likertMaxLabel.trim() || t('likertDefaultMaxLabel'),
+      }
+      questionData.likert_config = likertConfig
+      // Likert is opinion-based; never auto-graded
+      questionData.has_correct_answer = false
     }
     // Note: image_map type will be handled by the ImageMapEditor component
 
@@ -290,6 +312,10 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
                 <RadioGroupItem value="image_map" id="image_map" />
                 <Label htmlFor="image_map" className="cursor-pointer">{t('imageMap')}</Label>
               </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="likert" id="likert" />
+                <Label htmlFor="likert" className="cursor-pointer">{t('likert')}</Label>
+              </div>
             </RadioGroup>
           </div>
 
@@ -326,7 +352,7 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
           </div>
 
           {/* Has Correct Answer */}
-          {questionType !== 'image_map' && (
+          {questionType !== 'image_map' && questionType !== 'likert' && (
             <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
               <div className="space-y-0.5">
                 <Label htmlFor="has-correct-answer">{t('hasCorrectAnswer')}</Label>
@@ -572,6 +598,45 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
             </div>
           )}
 
+          {/* Likert Fields */}
+          {questionType === 'likert' && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500">{t('likertNote')}</p>
+              <div className="space-y-2">
+                <Label htmlFor="likertScale">{t('likertScale')}</Label>
+                <Input
+                  id="likertScale"
+                  type="number"
+                  min={2}
+                  max={11}
+                  value={likertScale}
+                  onChange={(e) => setLikertScale(parseInt(e.target.value, 10) || 5)}
+                  className="w-24"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="likertMinLabel">{t('likertMinLabel')}</Label>
+                  <Input
+                    id="likertMinLabel"
+                    placeholder={t('likertMinLabelPlaceholder')}
+                    value={likertMinLabel}
+                    onChange={(e) => setLikertMinLabel(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="likertMaxLabel">{t('likertMaxLabel')}</Label>
+                  <Input
+                    id="likertMaxLabel"
+                    placeholder={t('likertMaxLabelPlaceholder')}
+                    value={likertMaxLabel}
+                    onChange={(e) => setLikertMaxLabel(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Image Map Note */}
           {questionType === 'image_map' && (
             <div className="p-4 bg-blue-50 rounded-lg">
@@ -582,8 +647,8 @@ export function AddQuestionDialog({ assignmentId, questions, initialSessionId = 
             </div>
           )}
 
-          {/* Optional Image Upload (for mcq, open, slider) */}
-          {(questionType === 'mcq' || questionType === 'open' || questionType === 'slider') && (
+          {/* Optional Image Upload (for mcq, open, slider, likert) */}
+          {(questionType === 'mcq' || questionType === 'open' || questionType === 'slider' || questionType === 'likert') && (
             <div className="space-y-2">
               <Label>Question Image (optional)</Label>
               <ImageUpload

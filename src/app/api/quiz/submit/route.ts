@@ -17,6 +17,8 @@ interface SubmitRequest {
   journeyId?: string | null
   studentName: string | null
   studentEmail: string | null
+  studentAge?: number | null
+  studentGender?: string | null
   answers: {
     questionId: string
     selectedChoice: string | null
@@ -25,6 +27,9 @@ interface SubmitRequest {
     imageMapAnswers: Record<string, string> | null
   }[]
 }
+
+const VALID_GENDERS = ['male', 'female', 'non_binary', 'prefer_not_to_say'] as const
+type ValidGender = typeof VALID_GENDERS[number]
 
 // Background grading function - runs without blocking the response
 async function gradeQuestionsInBackground(
@@ -177,9 +182,42 @@ async function gradeQuestionsInBackground(
 export async function POST(request: NextRequest) {
   try {
     const body: SubmitRequest = await request.json()
-    const { assignmentId, shareLinkId, sessionId, journeyId, studentName, studentEmail, answers } = body
+    const { assignmentId, shareLinkId, sessionId, journeyId, studentName, studentEmail, studentAge, studentGender, answers } = body
 
     const supabase = await createClient()
+
+    let ageForAttempt: number | null = null
+    let genderForAttempt: ValidGender | null = null
+
+    if (journeyId) {
+      // Journey attempts inherit demographics from the parent journey
+      const { data: journeyRow } = await supabase
+        .from('student_journey')
+        .select('student_age, student_gender')
+        .eq('id', journeyId)
+        .maybeSingle()
+      if (journeyRow) {
+        ageForAttempt = (journeyRow as { student_age: number | null }).student_age ?? null
+        const g = (journeyRow as { student_gender: string | null }).student_gender ?? null
+        genderForAttempt = g && (VALID_GENDERS as readonly string[]).includes(g) ? (g as ValidGender) : null
+      }
+    } else {
+      // Single-session attempts: validate demographics from body
+      if (typeof studentAge !== 'number' || !Number.isInteger(studentAge) || studentAge < 5 || studentAge > 100) {
+        return NextResponse.json(
+          { error: 'A valid age between 5 and 100 is required' },
+          { status: 400 }
+        )
+      }
+      if (!studentGender || !(VALID_GENDERS as readonly string[]).includes(studentGender)) {
+        return NextResponse.json(
+          { error: 'A valid gender is required' },
+          { status: 400 }
+        )
+      }
+      ageForAttempt = studentAge
+      genderForAttempt = studentGender as ValidGender
+    }
 
     if (journeyId) {
       if (!sessionId) {
@@ -285,6 +323,8 @@ export async function POST(request: NextRequest) {
       journey_id: journeyId || null,
       student_name: studentName,
       student_email: studentEmail,
+      student_age: ageForAttempt,
+      student_gender: genderForAttempt,
       status: questionsNeedingAIGrading.length > 0 ? 'grading' : 'graded',
       submitted_at: new Date().toISOString(),
       grading_progress: 0,
@@ -344,7 +384,7 @@ export async function POST(request: NextRequest) {
             is_correct: null,
             score: null,
           })
-        } else if (question.type === 'slider') {
+        } else if (question.type === 'slider' || question.type === 'likert') {
           answerInserts.push({
             attempt_id: attemptId,
             question_id: question.id,
@@ -410,6 +450,15 @@ export async function POST(request: NextRequest) {
           image_map_answers: imageMapAnswers,
           is_correct: result.immediateScore === result.immediateMaxScore && result.pendingMaxScore === 0,
           score: result.immediateScore, // Text flags will be added by background grading
+        })
+      } else if (question.type === 'likert') {
+        // Likert questions are opinion-based and never auto-graded, even if has_correct_answer was flipped on
+        answerInserts.push({
+          attempt_id: attemptId,
+          question_id: question.id,
+          slider_value: answer?.sliderValue ?? null,
+          is_correct: null,
+          score: null,
         })
       } else {
         // Open question - will be graded in background
