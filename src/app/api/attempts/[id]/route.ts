@@ -115,33 +115,6 @@ export async function GET(
       answer: (answers || []) as AttemptWithRelations['answer'],
     } as AttemptWithRelations
 
-    // Get redirect info if final
-    let redirectInfo: { type: 'link' | 'embed'; url?: string; embedCode?: string } | null = null
-    if (attempt.is_final && attempt.level) {
-      let redirectQuery = supabase
-        .from('level_redirect')
-        .select('redirect_type, redirect_url, embed_code')
-        .eq('assignment_id', attempt.assignment_id)
-        .eq('level', attempt.level)
-
-      if (attempt.session_id) {
-        redirectQuery = redirectQuery.eq('session_id', attempt.session_id)
-      } else {
-        redirectQuery = redirectQuery.is('session_id', null)
-      }
-
-      const { data: redirect } = await redirectQuery.single()
-
-      if (redirect) {
-        const typedRedirect = redirect as { redirect_type: 'link' | 'embed'; redirect_url: string | null; embed_code: string | null }
-        redirectInfo = {
-          type: typedRedirect.redirect_type,
-          url: typedRedirect.redirect_url || undefined,
-          embedCode: typedRedirect.embed_code || undefined,
-        }
-      }
-    }
-
     // Fetch journey info if applicable
     let journey: { id: string; current_session_index: number; overall_status: string } | null = null
     if (attempt.journey_id) {
@@ -153,81 +126,28 @@ export async function GET(
       journey = journeyData || null
     }
 
-    // Get feedback visibility settings
-    const showCorrectAnswers = attempt.assignment?.show_correct_answers ?? true
-    const showAiFeedback = attempt.assignment?.show_ai_feedback ?? true
-    const showResults = attempt.assignment?.show_results ?? true
-
-    // When the teacher has disabled "show results", strip every piece of the review:
-    // answer details, per-question data, score/level summary, and AI feedback.
-    // The student only sees the submitted confirmation + guidance note.
-    if (!showResults) {
-      const hiddenAttempt = {
-        ...attempt,
-        answer: [],
-        mcq_score: 0,
-        mcq_total: 0,
-        open_score: 0,
-        open_total: 0,
-        total_score: 0,
-        max_score: 0,
-        level: null,
-      }
-      return NextResponse.json({
-        attempt: hiddenAttempt,
-        redirectInfo: null,
-        journey,
-        shareLinkToken: attempt.share_link?.token || null,
-        feedbackSettings: {
-          showCorrectAnswers: false,
-          showAiFeedback: false,
-          showResults: false,
-        },
-        guidanceNote: attempt.session?.guidance_note ?? null,
-      })
-    }
-
-    // Sanitize answers based on visibility settings
-    const sanitizedAnswers = attempt.answer.map((ans) => {
-      const sanitized = { ...ans }
-
-      // Strip AI feedback if disabled
-      if (!showAiFeedback) {
-        sanitized.ai_feedback = null
-      }
-
-      // Strip correct answer info if disabled
-      if (!showCorrectAnswers && ans.question) {
-        sanitized.question = {
-          ...ans.question,
-          correct_choice: null,
-          reference_answer: null,
-          slider_config: ans.question.slider_config
-            ? { ...ans.question.slider_config, correct_value: 0 }
-            : null,
-        }
-        // Also hide is_correct indicator
-        sanitized.is_correct = null
-      }
-
-      return sanitized
-    })
-
-    // Create sanitized attempt
-    const sanitizedAttempt = {
+    // Results/feedback visibility is force-disabled for students for now.
+    // Students only see a submitted confirmation and the session guidance note.
+    const hiddenAttempt = {
       ...attempt,
-      answer: sanitizedAnswers,
+      answer: [],
+      mcq_score: 0,
+      mcq_total: 0,
+      open_score: 0,
+      open_total: 0,
+      total_score: 0,
+      max_score: 0,
+      level: null,
     }
-
     return NextResponse.json({
-      attempt: sanitizedAttempt,
-      redirectInfo,
+      attempt: hiddenAttempt,
+      redirectInfo: null,
       journey,
       shareLinkToken: attempt.share_link?.token || null,
       feedbackSettings: {
-        showCorrectAnswers,
-        showAiFeedback,
-        showResults,
+        showCorrectAnswers: false,
+        showAiFeedback: false,
+        showResults: false,
       },
       guidanceNote: attempt.session?.guidance_note ?? null,
     })

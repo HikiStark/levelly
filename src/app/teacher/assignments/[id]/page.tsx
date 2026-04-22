@@ -9,7 +9,6 @@ import { QuestionsSection } from './questions-section'
 import { ShareLinkSection } from './share-link-section'
 import { LevelRedirectSection } from './level-redirect-section'
 import { PublishButton } from './publish-button'
-import { FeedbackSettingsSection } from './feedback-settings-section'
 import { SessionManager } from './session-manager'
 import { DeleteQuizButton } from './delete-quiz-button'
 import { EditDetailsDialog } from './edit-details-dialog'
@@ -132,24 +131,6 @@ export default async function AssignmentPage({
         </CardHeader>
         <CardContent>
           <LevelRedirectSection assignmentId={id} redirects={redirects || []} />
-        </CardContent>
-      </Card>
-
-      {/* Student Feedback Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('sections.feedbackSettings')}</CardTitle>
-          <CardDescription>
-            {t('sections.feedbackSettingsDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FeedbackSettingsSection
-            assignmentId={id}
-            showCorrectAnswers={assignment.show_correct_answers ?? true}
-            showAiFeedback={assignment.show_ai_feedback ?? true}
-            showResults={assignment.show_results ?? true}
-          />
         </CardContent>
       </Card>
 
