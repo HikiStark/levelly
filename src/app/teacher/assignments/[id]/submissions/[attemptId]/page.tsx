@@ -49,6 +49,20 @@ export default async function SubmissionDetailPage({
     notFound()
   }
 
+  // Fetch the guidance note the student will see.
+  // Prefer per-session note; fall back to assignment-level.
+  let sessionGuidance: string | null = null
+  if (attempt.session_id) {
+    const { data: sessionRow } = await supabase
+      .from('session')
+      .select('guidance_note')
+      .eq('id', attempt.session_id)
+      .maybeSingle()
+    sessionGuidance = (sessionRow as { guidance_note: string | null } | null)?.guidance_note ?? null
+  }
+  const assignmentGuidance = (assignment as { guidance_note?: string | null }).guidance_note ?? null
+  const effectiveGuidance = (sessionGuidance?.trim() || assignmentGuidance?.trim() || null)
+
   const percentage = attempt.max_score > 0
     ? Math.round((attempt.total_score / attempt.max_score) * 100)
     : 0
@@ -73,6 +87,21 @@ export default async function SubmissionDetailPage({
           </Link>
         </div>
       </div>
+
+      {/* Guidance Message the student sees */}
+      {effectiveGuidance && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="text-base text-blue-900">
+              Guidance message shown to student
+              {sessionGuidance ? ' (from session)' : ' (from quiz)'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-blue-900 whitespace-pre-line">{effectiveGuidance}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Student Info & Summary */}
       <Card>
