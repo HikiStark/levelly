@@ -12,7 +12,6 @@ import { PublishButton } from './publish-button'
 import { SessionManager } from './session-manager'
 import { DeleteQuizButton } from './delete-quiz-button'
 import { EditDetailsDialog } from './edit-details-dialog'
-import { GuidanceNoteSection } from './guidance-note-section'
 
 export default async function AssignmentPage({
   params,
@@ -21,7 +20,6 @@ export default async function AssignmentPage({
 }) {
   const { id } = await params
   const t = await getTranslations('assignment')
-  const tg = await getTranslations('guidance')
   const supabase = await createClient()
 
   const { data: assignment } = await supabase
@@ -133,19 +131,6 @@ export default async function AssignmentPage({
         </CardHeader>
         <CardContent>
           <LevelRedirectSection assignmentId={id} redirects={redirects || []} />
-        </CardContent>
-      </Card>
-
-      {/* Guidance Message (shown to students after submitting) */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{tg('title')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <GuidanceNoteSection
-            assignmentId={id}
-            initialNote={assignment.guidance_note ?? null}
-          />
         </CardContent>
       </Card>
 

@@ -49,8 +49,7 @@ export default async function SubmissionDetailPage({
     notFound()
   }
 
-  // Fetch the guidance note the student will see.
-  // Prefer per-session note; fall back to assignment-level.
+  // Fetch the session-level guidance note the student sees after grading.
   let sessionGuidance: string | null = null
   if (attempt.session_id) {
     const { data: sessionRow } = await supabase
@@ -60,8 +59,7 @@ export default async function SubmissionDetailPage({
       .maybeSingle()
     sessionGuidance = (sessionRow as { guidance_note: string | null } | null)?.guidance_note ?? null
   }
-  const assignmentGuidance = (assignment as { guidance_note?: string | null }).guidance_note ?? null
-  const effectiveGuidance = (sessionGuidance?.trim() || assignmentGuidance?.trim() || null)
+  const effectiveGuidance = sessionGuidance?.trim() || null
 
   const percentage = attempt.max_score > 0
     ? Math.round((attempt.total_score / attempt.max_score) * 100)
@@ -88,13 +86,12 @@ export default async function SubmissionDetailPage({
         </div>
       </div>
 
-      {/* Guidance Message the student sees */}
+      {/* Guidance Message the student sees after this session */}
       {effectiveGuidance && (
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
             <CardTitle className="text-base text-blue-900">
-              Guidance message shown to student
-              {sessionGuidance ? ' (from session)' : ' (from quiz)'}
+              Guidance message shown after this session
             </CardTitle>
           </CardHeader>
           <CardContent>

@@ -154,12 +154,8 @@ export async function GET(
       }
     }
 
-    // Prefer session-level note (more specific to this step); fall back to
-    // the assignment-level note for single-session quizzes or the last session.
-    const guidanceNote =
-      attempt.session?.guidance_note?.trim() ||
-      attempt.assignment?.guidance_note?.trim() ||
-      null
+    // Each session owns its guidance message; shown after that session's grading.
+    const guidanceNote = attempt.session?.guidance_note?.trim() || null
 
     // Students get the score/level summary and the embedded learning material.
     // Per-question feedback (correct answers, AI review) is kept off — the answer

@@ -20,7 +20,7 @@ interface JourneySummaryResponse {
     guidance_note?: string | null
   }
   sessionResults: {
-    session: { id: string; title: string; order_index: number; description: string | null }
+    session: { id: string; title: string; order_index: number; description: string | null; guidance_note?: string | null }
     attempt: {
       id: string
       total_score: number
@@ -99,8 +99,6 @@ export default function JourneyResultsPage({
 
   const level = data.summary.overallLevel as Level
 
-  const assignmentGuidance = data.assignment.guidance_note?.trim() || null
-
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -133,12 +131,6 @@ export default function JourneyResultsPage({
             <p className="text-sm text-gray-500">
               {t('completedSessions', { completed: data.summary.completedSessions, total: data.summary.totalSessions })}
             </p>
-            {assignmentGuidance && (
-              <div className="rounded-md bg-blue-50 border border-blue-200 p-4 mt-2">
-                <p className="text-sm font-medium text-blue-900 mb-1">{tr('guidanceTitle')}</p>
-                <p className="text-sm text-blue-900 whitespace-pre-line">{assignmentGuidance}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -147,33 +139,42 @@ export default function JourneyResultsPage({
             <CardTitle>{t('sessionBreakdown')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {data.sessionResults.map((result, index) => (
-              <div key={result.session.id} className="border rounded-md p-4 space-y-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium">
-                      {index + 1}. {result.session.title}
-                    </p>
-                    {result.session.description && (
-                      <p className="text-sm text-gray-500">{result.session.description}</p>
-                    )}
+            {data.sessionResults.map((result, index) => {
+              const sessionGuidance = result.session.guidance_note?.trim() || null
+              return (
+                <div key={result.session.id} className="border rounded-md p-4 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium">
+                        {index + 1}. {result.session.title}
+                      </p>
+                      {result.session.description && (
+                        <p className="text-sm text-gray-500">{result.session.description}</p>
+                      )}
+                    </div>
+                    <Badge
+                      variant={result.isComplete ? 'default' : 'secondary'}
+                    >
+                      {result.isComplete ? t('complete') : t('incomplete')}
+                    </Badge>
                   </div>
-                  <Badge
-                    variant={result.isComplete ? 'default' : 'secondary'}
-                  >
-                    {result.isComplete ? t('complete') : t('incomplete')}
-                  </Badge>
-                </div>
-                <div className="text-sm text-gray-600">
-                  {t('score', { score: result.score, maxScore: result.maxScore })}
-                </div>
-                {result.level && (
                   <div className="text-sm text-gray-600">
-                    {t('level', { level: getLevelDisplayName(result.level as Level) })}
+                    {t('score', { score: result.score, maxScore: result.maxScore })}
                   </div>
-                )}
-              </div>
-            ))}
+                  {result.level && (
+                    <div className="text-sm text-gray-600">
+                      {t('level', { level: getLevelDisplayName(result.level as Level) })}
+                    </div>
+                  )}
+                  {result.isComplete && sessionGuidance && (
+                    <div className="mt-2 rounded-md bg-blue-50 border border-blue-200 p-3">
+                      <p className="text-xs font-medium text-blue-900 mb-1">{tr('guidanceTitle')}</p>
+                      <p className="text-sm text-blue-900 whitespace-pre-line">{sessionGuidance}</p>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </CardContent>
         </Card>
 

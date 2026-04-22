@@ -134,6 +134,23 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
     router.refresh()
   }
 
+  const saveGuidance = async (sessionId: string, note: string) => {
+    setError(null)
+    const response = await fetch(`/api/sessions/${sessionId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guidanceNote: note.trim() || null }),
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      setError(data.error || t('failedToUpdate'))
+      return false
+    }
+    await fetchSessions()
+    router.refresh()
+    return true
+  }
+
   const deleteSession = async (sessionId: string) => {
     if (!confirm(t('deleteConfirm'))) return
     setError(null)
@@ -264,11 +281,6 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
                           {session.description && (
                             <p className="text-sm text-gray-600">{session.description}</p>
                           )}
-                          {session.guidance_note && (
-                            <p className="text-xs text-blue-700 mt-1 italic">
-                              {t('guidanceNote')}: {session.guidance_note.length > 80 ? `${session.guidance_note.slice(0, 80)}…` : session.guidance_note}
-                            </p>
-                          )}
                           <p className="text-xs text-gray-500 mt-1">
                             {t('questionCount', { count })}
                           </p>
@@ -298,6 +310,15 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
                           </Button>
                         </div>
                       </div>
+                      <SessionGuidanceInline
+                        sessionId={session.id}
+                        initialNote={session.guidance_note || ''}
+                        onSave={saveGuidance}
+                        label={t('guidanceNote')}
+                        placeholder={t('guidanceNotePlaceholder')}
+                        saveLabel={t('save')}
+                        savedLabel={tc('saving')}
+                      />
                     </>
                   )}
                 </CardContent>
@@ -306,6 +327,63 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+interface SessionGuidanceInlineProps {
+  sessionId: string
+  initialNote: string
+  onSave: (sessionId: string, note: string) => Promise<boolean>
+  label: string
+  placeholder: string
+  saveLabel: string
+  savedLabel: string
+}
+
+function SessionGuidanceInline({
+  sessionId,
+  initialNote,
+  onSave,
+  label,
+  placeholder,
+  saveLabel,
+  savedLabel,
+}: SessionGuidanceInlineProps) {
+  const [value, setValue] = useState(initialNote)
+  const [saving, setSaving] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
+
+  const dirty = value.trim() !== initialNote.trim()
+
+  const handleSave = async () => {
+    setSaving(true)
+    const ok = await onSave(sessionId, value)
+    setSaving(false)
+    if (ok) {
+      setJustSaved(true)
+      setTimeout(() => setJustSaved(false), 1500)
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded-md border border-blue-200 bg-blue-50/40 p-3">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs font-medium text-blue-900">{label}</Label>
+        {justSaved && <span className="text-xs text-green-700">✓</span>}
+      </div>
+      <Textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={placeholder}
+        rows={3}
+        className="bg-white"
+      />
+      <div className="flex justify-end">
+        <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
+          {saving ? savedLabel : saveLabel}
+        </Button>
+      </div>
     </div>
   )
 }
