@@ -67,6 +67,7 @@ export interface Database {
           title: string
           description: string | null
           guidance_note: string | null
+          show_ai_feedback: boolean
           order_index: number
           created_at: string
         }
@@ -76,6 +77,7 @@ export interface Database {
           title: string
           description?: string | null
           guidance_note?: string | null
+          show_ai_feedback?: boolean
           order_index: number
           created_at?: string
         }
@@ -85,6 +87,7 @@ export interface Database {
           title?: string
           description?: string | null
           guidance_note?: string | null
+          show_ai_feedback?: boolean
           order_index?: number
           created_at?: string
         }

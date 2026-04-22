@@ -86,12 +86,18 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { title, description, guidanceNote } = body
+    const { title, description, guidanceNote, showAiFeedback } = body
 
-    const updateData: { title?: string; description?: string | null; guidance_note?: string | null } = {}
+    const updateData: {
+      title?: string
+      description?: string | null
+      guidance_note?: string | null
+      show_ai_feedback?: boolean
+    } = {}
     if (title !== undefined) updateData.title = title
     if (description !== undefined) updateData.description = description
     if (guidanceNote !== undefined) updateData.guidance_note = guidanceNote
+    if (typeof showAiFeedback === 'boolean') updateData.show_ai_feedback = showAiFeedback
 
     const { data: updatedSession, error: updateError } = await supabase
       .from('session')

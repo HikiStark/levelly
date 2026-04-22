@@ -197,6 +197,8 @@
     "descriptionPlaceholder": "Shown to students before the session",
     "guidanceNote": "Guidance Note (shown after grading)",
     "guidanceNotePlaceholder": "A short note your students will see after submitting this session...",
+    "showAiFeedback": "Show AI feedback on grading page",
+    "showAiFeedbackDesc": "When enabled, students see AI-generated feedback for each of their answers on this session's grading page. Off by default.",
     "addSession": "Add Session",
     "creating": "Creating...",
     "noSessions": "No sessions yet. Create your first session above.",

@@ -42,11 +42,13 @@ ALTER TABLE assignment
 
 COMMENT ON COLUMN assignment.show_results IS 'When false, students see a thank-you screen instead of their score/level/feedback after submitting';
 
--- 3. Per-session guidance note
+-- 3. Per-session guidance note + AI feedback toggle
 ALTER TABLE session
-  ADD COLUMN IF NOT EXISTS guidance_note TEXT;
+  ADD COLUMN IF NOT EXISTS guidance_note TEXT,
+  ADD COLUMN IF NOT EXISTS show_ai_feedback BOOLEAN DEFAULT false;
 
 COMMENT ON COLUMN session.guidance_note IS 'Teacher-authored note shown to students after they finish grading this session';
+COMMENT ON COLUMN session.show_ai_feedback IS 'When true, students see AI-generated feedback for each answer on this session''s grading page. Off by default.';
 
 -- 3b. Assignment-level guidance note (shown on the submitted/thank-you screen)
 ALTER TABLE assignment

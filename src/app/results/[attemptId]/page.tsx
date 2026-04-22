@@ -390,8 +390,11 @@ export default function ResultsPage({
           </CardContent>
         </Card>
 
-        {/* Detailed Results — hidden when teacher disables show_results */}
-        {feedbackSettings.showResults && attempt.is_final && attempt.answer && attempt.answer.length > 0 && (
+        {/* AI Feedback per question — shown only when the session's
+            show_ai_feedback toggle is enabled. Correct answers are always
+            stripped server-side; only the student's own answer + AI feedback
+            is rendered. */}
+        {feedbackSettings.showAiFeedback && attempt.is_final && attempt.answer && attempt.answer.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">{t('questionDetails')}</CardTitle>

@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import { Session, Question } from '@/lib/supabase/types'
 
 interface SessionManagerProps {
@@ -149,6 +150,29 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
     await fetchSessions()
     router.refresh()
     return true
+  }
+
+  const toggleShowAiFeedback = async (sessionId: string, next: boolean) => {
+    setError(null)
+    // optimistic local update
+    setSessions((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, show_ai_feedback: next } : s))
+    )
+    const response = await fetch(`/api/sessions/${sessionId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ showAiFeedback: next }),
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      setError(data.error || t('failedToUpdate'))
+      // revert
+      setSessions((prev) =>
+        prev.map((s) => (s.id === sessionId ? { ...s, show_ai_feedback: !next } : s))
+      )
+      return
+    }
+    router.refresh()
   }
 
   const deleteSession = async (sessionId: string) => {
@@ -319,6 +343,20 @@ export function SessionManager({ assignmentId, questions }: SessionManagerProps)
                         saveLabel={t('save')}
                         savedLabel={tc('saving')}
                       />
+
+                      <div className="flex items-start justify-between gap-4 rounded-md border border-gray-200 p-3">
+                        <div className="space-y-0.5 pr-4">
+                          <Label htmlFor={`ai-feedback-${session.id}`} className="cursor-pointer text-sm font-medium">
+                            {t('showAiFeedback')}
+                          </Label>
+                          <p className="text-xs text-gray-500">{t('showAiFeedbackDesc')}</p>
+                        </div>
+                        <Switch
+                          id={`ai-feedback-${session.id}`}
+                          checked={session.show_ai_feedback === true}
+                          onCheckedChange={(checked) => toggleShowAiFeedback(session.id, checked)}
+                        />
+                      </div>
                     </>
                   )}
                 </CardContent>

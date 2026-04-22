@@ -197,6 +197,8 @@
     "descriptionPlaceholder": "Wird Schülern vor der Sitzung angezeigt",
     "guidanceNote": "Hinweis nach der Bewertung",
     "guidanceNotePlaceholder": "Ein kurzer Hinweis, den Schüler nach dem Absenden dieser Sitzung sehen...",
+    "showAiFeedback": "KI-Feedback auf der Ergebnisseite anzeigen",
+    "showAiFeedbackDesc": "Wenn aktiviert, sehen Schüler KI-generiertes Feedback zu jeder ihrer Antworten auf der Ergebnisseite dieser Sitzung. Standardmäßig deaktiviert.",
     "addSession": "Sitzung hinzufügen",
     "creating": "Wird erstellt...",
     "noSessions": "Noch keine Sitzungen. Erstellen Sie oben Ihre erste Sitzung.",

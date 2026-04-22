@@ -21,6 +21,7 @@ interface AttemptWithRelations extends Attempt {
     title: string
     order_index: number
     guidance_note: string | null
+    show_ai_feedback: boolean | null
   } | null
   answer: Array<{
     id: string
@@ -96,7 +97,7 @@ export async function GET(
     const sessionQuery = attemptBase.session_id
       ? supabase
           .from('session')
-          .select('id, title, order_index, guidance_note')
+          .select('id, title, order_index, guidance_note, show_ai_feedback')
           .eq('id', attemptBase.session_id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null })
@@ -157,12 +158,32 @@ export async function GET(
     // Each session owns its guidance message; shown after that session's grading.
     const guidanceNote = attempt.session?.guidance_note?.trim() || null
 
-    // Students get the score/level summary and the embedded learning material.
-    // Per-question feedback (correct answers, AI review) is kept off — the answer
-    // array is stripped here so the "Question Details" card never renders.
+    // AI feedback toggle is per-session and OFF by default. When ON, include
+    // the student's own answers + AI feedback (but no correct answers).
+    // When OFF, omit the answer array so the "Question Details" card never renders.
+    const showAiFeedback = attempt.session?.show_ai_feedback === true
+    const sanitizedAnswers = showAiFeedback
+      ? attempt.answer.map((ans) => ({
+          ...ans,
+          // Strip correctness / reference answers / correct choices — the toggle
+          // only governs AI-generated feedback, not revealing the right answers.
+          is_correct: null,
+          question: ans.question
+            ? {
+                ...ans.question,
+                correct_choice: null,
+                reference_answer: null,
+                slider_config: ans.question.slider_config
+                  ? { ...ans.question.slider_config, correct_value: 0 }
+                  : null,
+              }
+            : null,
+        }))
+      : []
+
     const studentSafeAttempt = {
       ...attempt,
-      answer: [],
+      answer: sanitizedAnswers,
     }
 
     return NextResponse.json({
@@ -172,7 +193,7 @@ export async function GET(
       shareLinkToken: attempt.share_link?.token || null,
       feedbackSettings: {
         showCorrectAnswers: false,
-        showAiFeedback: false,
+        showAiFeedback,
         showResults: true,
       },
       guidanceNote,
