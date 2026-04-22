@@ -158,6 +158,35 @@ export async function GET(
     const showAiFeedback = attempt.assignment?.show_ai_feedback ?? true
     const showResults = attempt.assignment?.show_results ?? true
 
+    // When the teacher has disabled "show results", strip every piece of the review:
+    // answer details, per-question data, score/level summary, and AI feedback.
+    // The student only sees the submitted confirmation + guidance note.
+    if (!showResults) {
+      const hiddenAttempt = {
+        ...attempt,
+        answer: [],
+        mcq_score: 0,
+        mcq_total: 0,
+        open_score: 0,
+        open_total: 0,
+        total_score: 0,
+        max_score: 0,
+        level: null,
+      }
+      return NextResponse.json({
+        attempt: hiddenAttempt,
+        redirectInfo: null,
+        journey,
+        shareLinkToken: attempt.share_link?.token || null,
+        feedbackSettings: {
+          showCorrectAnswers: false,
+          showAiFeedback: false,
+          showResults: false,
+        },
+        guidanceNote: attempt.session?.guidance_note ?? null,
+      })
+    }
+
     // Sanitize answers based on visibility settings
     const sanitizedAnswers = attempt.answer.map((ans) => {
       const sanitized = { ...ans }

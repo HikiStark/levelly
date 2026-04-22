@@ -385,8 +385,8 @@ export default function ResultsPage({
           </CardContent>
         </Card>
 
-        {/* Detailed Results */}
-        {attempt.is_final && attempt.answer && (
+        {/* Detailed Results — hidden when teacher disables show_results */}
+        {feedbackSettings.showResults && attempt.is_final && attempt.answer && attempt.answer.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Question Details</CardTitle>
