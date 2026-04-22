@@ -127,18 +127,31 @@ export async function GET(
       journey = journeyData || null
     }
 
-    // Results/feedback visibility is force-disabled for students for now.
-    // Students only see a submitted confirmation and any teacher guidance notes.
-    const hiddenAttempt = {
-      ...attempt,
-      answer: [],
-      mcq_score: 0,
-      mcq_total: 0,
-      open_score: 0,
-      open_total: 0,
-      total_score: 0,
-      max_score: 0,
-      level: null,
+    // Fetch the embedded/redirect learning material for this student's level.
+    let redirectInfo: { type: 'link' | 'embed'; url?: string; embedCode?: string } | null = null
+    if (attempt.is_final && attempt.level) {
+      let redirectQuery = supabase
+        .from('level_redirect')
+        .select('redirect_type, redirect_url, embed_code')
+        .eq('assignment_id', attempt.assignment_id)
+        .eq('level', attempt.level)
+
+      if (attempt.session_id) {
+        redirectQuery = redirectQuery.eq('session_id', attempt.session_id)
+      } else {
+        redirectQuery = redirectQuery.is('session_id', null)
+      }
+
+      const { data: redirect } = await redirectQuery.maybeSingle()
+
+      if (redirect) {
+        const typed = redirect as { redirect_type: 'link' | 'embed'; redirect_url: string | null; embed_code: string | null }
+        redirectInfo = {
+          type: typed.redirect_type,
+          url: typed.redirect_url || undefined,
+          embedCode: typed.embed_code || undefined,
+        }
+      }
     }
 
     // Prefer session-level note (more specific to this step); fall back to
@@ -148,15 +161,23 @@ export async function GET(
       attempt.assignment?.guidance_note?.trim() ||
       null
 
+    // Students get the score/level summary and the embedded learning material.
+    // Per-question feedback (correct answers, AI review) is kept off — the answer
+    // array is stripped here so the "Question Details" card never renders.
+    const studentSafeAttempt = {
+      ...attempt,
+      answer: [],
+    }
+
     return NextResponse.json({
-      attempt: hiddenAttempt,
-      redirectInfo: null,
+      attempt: studentSafeAttempt,
+      redirectInfo,
       journey,
       shareLinkToken: attempt.share_link?.token || null,
       feedbackSettings: {
         showCorrectAnswers: false,
         showAiFeedback: false,
-        showResults: false,
+        showResults: true,
       },
       guidanceNote,
     })

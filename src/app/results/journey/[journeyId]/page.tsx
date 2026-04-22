@@ -99,32 +99,7 @@ export default function JourneyResultsPage({
 
   const level = data.summary.overallLevel as Level
 
-  if (data.assignment.show_results === false) {
-    const guidance = data.assignment.guidance_note?.trim()
-    return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <div className="flex justify-end">
-            <LanguageToggle />
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('submittedTitle')}</CardTitle>
-              <CardDescription>{t('submittedDesc')}</CardDescription>
-            </CardHeader>
-            {guidance && (
-              <CardContent>
-                <div className="rounded-md bg-blue-50 border border-blue-200 p-4">
-                  <p className="text-sm font-medium text-blue-900 mb-1">{tr('guidanceTitle')}</p>
-                  <p className="text-sm text-blue-900 whitespace-pre-line">{guidance}</p>
-                </div>
-              </CardContent>
-            )}
-          </Card>
-        </div>
-      </div>
-    )
-  }
+  const assignmentGuidance = data.assignment.guidance_note?.trim() || null
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -158,6 +133,12 @@ export default function JourneyResultsPage({
             <p className="text-sm text-gray-500">
               {t('completedSessions', { completed: data.summary.completedSessions, total: data.summary.totalSessions })}
             </p>
+            {assignmentGuidance && (
+              <div className="rounded-md bg-blue-50 border border-blue-200 p-4 mt-2">
+                <p className="text-sm font-medium text-blue-900 mb-1">{tr('guidanceTitle')}</p>
+                <p className="text-sm text-blue-900 whitespace-pre-line">{assignmentGuidance}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

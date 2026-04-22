@@ -25,9 +25,6 @@ export async function GET(
       )
     }
 
-    // Get the assignment — always mark show_results as false so students never see
-    // per-session scores/feedback. The teacher still has access via the submissions
-    // dashboard; this endpoint is for students only.
     const { data: assignment, error: assignmentError } = await supabase
       .from('assignment')
       .select('id, title, description, guidance_note')
@@ -137,9 +134,7 @@ export async function GET(
         max_score: maxScore,
         overall_level: overallLevel,
       },
-      // Always force show_results = false so the student-facing journey page
-      // renders the "Submitted, thank you" card and never exposes scores.
-      assignment: { ...assignment, show_results: false },
+      assignment,
       sessionResults,
       summary: {
         totalScore,
