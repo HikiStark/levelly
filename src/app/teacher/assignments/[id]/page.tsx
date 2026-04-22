@@ -33,6 +33,10 @@ export default async function AssignmentPage({
     notFound()
   }
 
+  // Detect whether migration 010 is applied — without the column the
+  // show_results toggle cannot work and we should warn the teacher up front.
+  const migrationApplied = Object.prototype.hasOwnProperty.call(assignment, 'show_results')
+
   const { data: questions } = await supabase
     .from('question')
     .select('*')
@@ -52,6 +56,17 @@ export default async function AssignmentPage({
 
   return (
     <div className="space-y-8">
+      {!migrationApplied && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-medium">Database migration required</p>
+          <p>
+            Some features (hide results, guidance notes, student demographics, Likert questions) rely on
+            <code className="mx-1 rounded bg-amber-100 px-1">supabase/migrations/010_levelly_fixes_and_features.sql</code>
+            which has not been applied yet. Apply it in your Supabase SQL editor or via <code className="mx-1 rounded bg-amber-100 px-1">supabase db push</code>, then reload this page.
+          </p>
+        </div>
+      )}
+
       <div className="flex justify-between items-start">
         <div>
           <div className="flex items-center gap-3 mb-2">

@@ -75,7 +75,19 @@ export async function PATCH(
 
     if (error) {
       console.error('Error updating assignment:', error)
-      return NextResponse.json({ error: 'Failed to update assignment' }, { status: 500 })
+      // Postgres undefined_column = 42703. Surface a specific, actionable error so the
+      // teacher immediately sees that migration 010 hasn't been applied.
+      const code = (error as { code?: string }).code
+      if (code === '42703') {
+        return NextResponse.json(
+          {
+            error: 'Database schema is missing required columns. Apply migration 010_levelly_fixes_and_features.sql to your Supabase database, then try again.',
+            code: 'missing_column',
+          },
+          { status: 500 }
+        )
+      }
+      return NextResponse.json({ error: error.message || 'Failed to update assignment' }, { status: 500 })
     }
 
     return NextResponse.json({ assignment: data })
