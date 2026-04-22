@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState, use } from 'react'
 import { useTranslations } from 'next-intl'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { LanguageToggle } from '@/components/language-toggle'
 import { getLevelDisplayName, getLevelColor, Level } from '@/lib/grading/level-calculator'
 
 interface JourneySummaryResponse {
@@ -16,6 +17,7 @@ interface JourneySummaryResponse {
     title: string
     description: string | null
     show_results?: boolean
+    guidance_note?: string | null
   }
   sessionResults: {
     session: { id: string; title: string; order_index: number; description: string | null }
@@ -52,6 +54,7 @@ export default function JourneyResultsPage({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const t = useTranslations('journey')
+  const tr = useTranslations('results')
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -97,18 +100,26 @@ export default function JourneyResultsPage({
   const level = data.summary.overallLevel as Level
 
   if (data.assignment.show_results === false) {
+    const guidance = data.assignment.guidance_note?.trim()
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-3xl mx-auto space-y-6">
+          <div className="flex justify-end">
+            <LanguageToggle />
+          </div>
           <Card>
             <CardHeader>
-              <CardTitle>{data.assignment.title}</CardTitle>
+              <CardTitle>{t('submittedTitle')}</CardTitle>
+              <CardDescription>{t('submittedDesc')}</CardDescription>
             </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                Thank you for completing all sessions. Your teacher has chosen not to share detailed results.
-              </p>
-            </CardContent>
+            {guidance && (
+              <CardContent>
+                <div className="rounded-md bg-blue-50 border border-blue-200 p-4">
+                  <p className="text-sm font-medium text-blue-900 mb-1">{tr('guidanceTitle')}</p>
+                  <p className="text-sm text-blue-900 whitespace-pre-line">{guidance}</p>
+                </div>
+              </CardContent>
+            )}
           </Card>
         </div>
       </div>
@@ -118,6 +129,9 @@ export default function JourneyResultsPage({
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-5xl mx-auto space-y-6">
+        <div className="flex justify-end">
+          <LanguageToggle />
+        </div>
         <Card>
           <CardHeader>
             <CardTitle>{t('title', { quizTitle: data.assignment.title })}</CardTitle>

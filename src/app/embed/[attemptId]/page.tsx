@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { LanguageToggle } from '@/components/language-toggle'
 
 interface EmbedData {
   embedCode: string
@@ -87,6 +88,7 @@ export default function EmbedPage({
           >
             &larr; {t('backToResults')}
           </Button>
+          <LanguageToggle />
         </div>
 
         {/* Embed Content Container */}

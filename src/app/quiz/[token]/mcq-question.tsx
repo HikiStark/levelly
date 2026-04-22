@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Question } from '@/lib/supabase/types'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -13,6 +14,7 @@ interface MCQQuestionProps {
 }
 
 export function MCQQuestion({ question, selectedChoice, onSelect, onMultiSelect }: MCQQuestionProps) {
+  const t = useTranslations('quiz')
   const choices = question.choices as { id: string; text: string }[] | null
 
   // Detect if this is a multi-answer question by checking if correct_choice contains a comma
@@ -43,7 +45,7 @@ export function MCQQuestion({ question, selectedChoice, onSelect, onMultiSelect 
     return (
       <div className="space-y-4">
         <p className="text-gray-900">{question.prompt}</p>
-        <p className="text-sm text-blue-600">Select all correct answers</p>
+        <p className="text-sm text-blue-600">{t('selectAllCorrect')}</p>
         <div className="space-y-2">
           {choices.map((choice) => (
             <div

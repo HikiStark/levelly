@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Question, SliderConfig } from '@/lib/supabase/types'
 import { Slider } from '@/components/ui/slider'
 
@@ -10,13 +11,14 @@ interface SliderQuestionProps {
 }
 
 export function SliderQuestion({ question, value, onChange }: SliderQuestionProps) {
+  const t = useTranslations('quiz')
   const config = question.slider_config as SliderConfig | null
 
   if (!config) {
     return (
       <div className="space-y-4">
         <p className="text-gray-900">{question.prompt}</p>
-        <p className="text-red-500">Error: Slider configuration is missing</p>
+        <p className="text-red-500">{t('sliderMissing')}</p>
       </div>
     )
   }
@@ -29,7 +31,7 @@ export function SliderQuestion({ question, value, onChange }: SliderQuestionProp
         <div className="mb-4">
           <img
             src={question.image_url}
-            alt="Question image"
+            alt={t('questionImageAlt')}
             className="max-w-full h-auto rounded-lg"
           />
         </div>
@@ -50,7 +52,7 @@ export function SliderQuestion({ question, value, onChange }: SliderQuestionProp
           className="w-full"
         />
         <p className="text-sm text-gray-500 text-center">
-          Drag the slider to select your answer
+          {t('dragSlider')}
         </p>
       </div>
     </div>

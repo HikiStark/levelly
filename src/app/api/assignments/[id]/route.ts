@@ -58,6 +58,12 @@ export async function PATCH(
           ? body.description.trim()
           : null
     }
+    if ('guidance_note' in body) {
+      updates.guidance_note =
+        typeof body.guidance_note === 'string' && body.guidance_note.trim()
+          ? body.guidance_note.trim()
+          : null
+    }
     if (typeof body.show_results === 'boolean') updates.show_results = body.show_results
     if (typeof body.show_correct_answers === 'boolean') updates.show_correct_answers = body.show_correct_answers
     if (typeof body.show_ai_feedback === 'boolean') updates.show_ai_feedback = body.show_ai_feedback

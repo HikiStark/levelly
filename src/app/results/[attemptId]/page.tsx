@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { LanguageToggle } from '@/components/language-toggle'
 import { getLevelDisplayName, getLevelColor, Level } from '@/lib/grading/level-calculator'
 import { Session } from '@/lib/supabase/types'
 
@@ -197,7 +198,7 @@ export default function ResultsPage({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading results...</p>
+          <p className="text-gray-600">{t('loading')}</p>
         </div>
       </div>
     )
@@ -208,7 +209,7 @@ export default function ResultsPage({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6">
-            <p className="text-red-600">{error || 'Results not found'}</p>
+            <p className="text-red-600">{error || t('notFound')}</p>
           </CardContent>
         </Card>
       </div>
@@ -227,6 +228,9 @@ export default function ResultsPage({
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-3xl mx-auto space-y-6">
+          <div className="flex justify-end">
+            <LanguageToggle />
+          </div>
           <Card>
             <CardHeader>
               <CardTitle>{t('submittedTitle')}</CardTitle>
@@ -242,7 +246,7 @@ export default function ResultsPage({
                 )}
                 {attempt.is_final && attempt.journey_id && hasNextSession && (
                   <Button className="w-full" size="lg" onClick={handleNextSession}>
-                    {tq('startQuiz')}
+                    {t('continueNext')}
                   </Button>
                 )}
               </CardContent>
@@ -256,14 +260,15 @@ export default function ResultsPage({
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-5xl mx-auto space-y-6">
+        <div className="flex justify-end">
+          <LanguageToggle />
+        </div>
         {/* Header */}
         <Card>
           <CardHeader>
-            <CardTitle>{attempt.assignment?.title || 'Quiz'} Results</CardTitle>
+            <CardTitle>{t('title', { quizTitle: attempt.assignment?.title || 'Quiz' })}</CardTitle>
             <CardDescription>
-              {attempt.is_final
-                ? 'Your results are ready!'
-                : 'Grading in progress...'}
+              {attempt.is_final ? t('resultsReady') : t('gradingInProgress')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -271,7 +276,7 @@ export default function ResultsPage({
               <div className="mb-6 p-4 bg-yellow-50 rounded-md flex items-center gap-3">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-600"></div>
                 <span className="text-yellow-800">
-                  AI is grading your open-ended answers...
+                  {t('aiGrading')}
                 </span>
               </div>
             )}
@@ -279,10 +284,10 @@ export default function ResultsPage({
             {/* Session info */}
             {attempt.session && (
               <div className="mb-4 text-sm text-gray-600">
-                Session: <span className="font-medium">{attempt.session.title}</span>
+                {t('session', { title: attempt.session.title })}
                 {totalSessions > 0 && (
                   <span className="ml-2 text-gray-400">
-                    (Session {Math.min(currentIndex + 1, totalSessions)} of {totalSessions})
+                    {t('sessionOf', { current: Math.min(currentIndex + 1, totalSessions), total: totalSessions })}
                   </span>
                 )}
               </div>
@@ -290,14 +295,14 @@ export default function ResultsPage({
 
             {/* Level Badge */}
             <div className="text-center py-6">
-              <p className="text-sm text-gray-500 mb-2">Your Level</p>
+              <p className="text-sm text-gray-500 mb-2">{t('yourLevel')}</p>
               <Badge
                 className={`text-xl px-6 py-2 ${getLevelColor(attempt.level as Level)} text-white`}
               >
                 {getLevelDisplayName(attempt.level as Level)}
               </Badge>
               {!attempt.is_final && (
-                <p className="text-xs text-gray-400 mt-2">(Provisional)</p>
+                <p className="text-xs text-gray-400 mt-2">{t('provisional')}</p>
               )}
             </div>
 
@@ -305,13 +310,13 @@ export default function ResultsPage({
             <div className="grid grid-cols-2 gap-4 mt-6">
               <div className="text-center p-4 bg-gray-50 rounded-md">
                 <p className="text-3xl font-bold text-gray-900">{percentage}%</p>
-                <p className="text-sm text-gray-500">Overall Score</p>
+                <p className="text-sm text-gray-500">{t('overallScore')}</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-md">
                 <p className="text-3xl font-bold text-gray-900">
                   {attempt.total_score}/{attempt.max_score}
                 </p>
-                <p className="text-sm text-gray-500">Points</p>
+                <p className="text-sm text-gray-500">{t('points')}</p>
               </div>
             </div>
 
@@ -319,7 +324,7 @@ export default function ResultsPage({
             <div className="mt-6 space-y-2">
               {attempt.mcq_total > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Multiple Choice</span>
+                  <span className="text-gray-600">{t('multipleChoice')}</span>
                   <span className="font-medium">
                     {attempt.mcq_score}/{attempt.mcq_total}
                   </span>
@@ -327,11 +332,11 @@ export default function ResultsPage({
               )}
               {attempt.open_total > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Open-ended</span>
+                  <span className="text-gray-600">{t('openEnded')}</span>
                   <span className="font-medium">
                     {attempt.is_final
                       ? `${attempt.open_score}/${attempt.open_total}`
-                      : 'Grading...'}
+                      : t('grading')}
                   </span>
                 </div>
               )}
@@ -346,7 +351,7 @@ export default function ResultsPage({
                     size="lg"
                     onClick={() => window.open(redirectInfo.url, '_blank')}
                   >
-                    Open Learning Content
+                    {t('openLearningContent')}
                   </Button>
                 ) : redirectInfo.type === 'embed' && redirectInfo.embedCode ? (
                   <div className="border rounded-lg p-4 bg-white">
@@ -369,7 +374,7 @@ export default function ResultsPage({
               <div className="mt-6">
                 {hasNextSession ? (
                   <Button className="w-full" size="lg" onClick={handleNextSession}>
-                    Continue to Next Session
+                    {t('continueNextSession')}
                   </Button>
                 ) : (
                   <Button
@@ -377,7 +382,7 @@ export default function ResultsPage({
                     size="lg"
                     onClick={() => router.push(`/results/journey/${attempt.journey_id}`)}
                   >
-                    View Overall Results
+                    {t('viewOverallResults')}
                   </Button>
                 )}
               </div>
@@ -389,7 +394,7 @@ export default function ResultsPage({
         {feedbackSettings.showResults && attempt.is_final && attempt.answer && attempt.answer.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Question Details</CardTitle>
+              <CardTitle className="text-lg">{t('questionDetails')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {[...attempt.answer]
@@ -403,7 +408,7 @@ export default function ResultsPage({
                   {ans.question?.image_url && ans.question?.type !== 'image_map' && (
                     <img
                       src={ans.question.image_url}
-                      alt="Question image"
+                      alt={tq('questionImageAlt')}
                       className="max-w-full h-auto rounded-lg mb-2"
                     />
                   )}
@@ -413,7 +418,7 @@ export default function ResultsPage({
                       Q{index + 1}: {ans.question?.prompt}
                     </p>
                     {ans.question?.has_correct_answer === false ? (
-                      <Badge variant="secondary">Ungraded</Badge>
+                      <Badge variant="secondary">{t('ungraded')}</Badge>
                     ) : (
                       <Badge
                         variant={
@@ -432,9 +437,9 @@ export default function ResultsPage({
                   {/* MCQ Answer */}
                   {ans.question?.type === 'mcq' && (
                     <p className="text-sm text-gray-600">
-                      Your answer: {ans.selected_choice?.toUpperCase() || 'Not answered'}
+                      {t('yourAnswer', { answer: ans.selected_choice?.toUpperCase() || t('notAnswered') })}
                       {ans.question?.has_correct_answer !== false && ans.is_correct !== null &&
-                        (ans.is_correct ? ' (Correct)' : ' (Incorrect)')}
+                        (ans.is_correct ? ` ${t('correct')}` : ` ${t('incorrect')}`)}
                     </p>
                   )}
 
@@ -442,15 +447,15 @@ export default function ResultsPage({
                   {ans.question?.type === 'slider' && (
                     <div className="text-sm text-gray-600">
                       <p>
-                        Your answer: {ans.slider_value ?? 'Not answered'}
+                        {t('yourAnswer', { answer: ans.slider_value ?? t('notAnswered') })}
                         {ans.question?.has_correct_answer !== false && ans.is_correct !== null &&
-                          (ans.is_correct ? ' (Correct)' : ' (Incorrect)')}
+                          (ans.is_correct ? ` ${t('correct')}` : ` ${t('incorrect')}`)}
                       </p>
                       {feedbackSettings.showCorrectAnswers && ans.question.has_correct_answer !== false && ans.question.slider_config && (
                         <p className="text-xs text-gray-400">
-                          Correct: {ans.question.slider_config.correct_value}
+                          {t('correctValue', { value: ans.question.slider_config.correct_value })}
                           {ans.question.slider_config.tolerance > 0 &&
-                            ` (+/-${ans.question.slider_config.tolerance})`}
+                            ` ${t('toleranceDisplay', { tolerance: ans.question.slider_config.tolerance })}`}
                         </p>
                       )}
                     </div>
@@ -461,7 +466,7 @@ export default function ResultsPage({
                     <div className="space-y-2">
                       <img
                         src={ans.question.image_map_config.base_image_url}
-                        alt="Question image"
+                        alt={tq('questionImageAlt')}
                         className="max-w-full h-auto rounded-lg"
                       />
                       <div className="text-sm text-gray-600 space-y-1">
@@ -469,14 +474,14 @@ export default function ResultsPage({
                           <div key={flag.id} className="flex justify-between">
                             <span>{flag.label}:</span>
                             <span>
-                              {ans.image_map_answers?.[flag.id] || 'Not answered'}
+                              {ans.image_map_answers?.[flag.id] || t('notAnswered')}
                             </span>
                           </div>
                         ))}
                       </div>
                       {ans.ai_feedback && feedbackSettings.showAiFeedback && (
                         <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded whitespace-pre-line">
-                          Feedback: {ans.ai_feedback}
+                          {t('feedback', { text: ans.ai_feedback })}
                         </p>
                       )}
                     </div>
@@ -486,9 +491,9 @@ export default function ResultsPage({
                   {ans.question?.type === 'likert' && ans.question.likert_config && (
                     <div className="text-sm text-gray-600 space-y-1">
                       <p>
-                        Your response: {ans.slider_value != null
+                        {t('yourAnswer', { answer: ans.slider_value != null
                           ? `${ans.slider_value} / ${ans.question.likert_config.scale}`
-                          : 'Not answered'}
+                          : t('notAnswered') })}
                       </p>
                       {ans.slider_value != null && (
                         <p className="text-xs text-gray-400">
@@ -502,11 +507,11 @@ export default function ResultsPage({
                   {ans.question?.type === 'open' && (
                     <>
                       <p className="text-sm text-gray-600">
-                        Your answer: {ans.answer_text || 'Not answered'}
+                        {t('yourAnswer', { answer: ans.answer_text || t('notAnswered') })}
                       </p>
                       {ans.ai_feedback && feedbackSettings.showAiFeedback && (
                         <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                          Feedback: {ans.ai_feedback}
+                          {t('feedback', { text: ans.ai_feedback })}
                         </p>
                       )}
                     </>

@@ -179,6 +179,7 @@ export interface Database {
           show_correct_answers: boolean
           show_ai_feedback: boolean
           show_results: boolean
+          guidance_note: string | null
         }
         Insert: {
           id?: string
@@ -190,6 +191,7 @@ export interface Database {
           show_correct_answers?: boolean
           show_ai_feedback?: boolean
           show_results?: boolean
+          guidance_note?: string | null
         }
         Update: {
           id?: string
@@ -201,6 +203,7 @@ export interface Database {
           show_correct_answers?: boolean
           show_ai_feedback?: boolean
           show_results?: boolean
+          guidance_note?: string | null
         }
       }
       question: {

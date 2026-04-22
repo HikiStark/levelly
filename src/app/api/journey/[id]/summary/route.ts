@@ -30,7 +30,7 @@ export async function GET(
     // dashboard; this endpoint is for students only.
     const { data: assignment, error: assignmentError } = await supabase
       .from('assignment')
-      .select('id, title, description')
+      .select('id, title, description, guidance_note')
       .eq('id', journey.assignment_id)
       .single()
 

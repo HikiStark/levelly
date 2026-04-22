@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Question, ImageMapConfig, ImageMapFlag, SliderConfig } from '@/lib/supabase/types'
+import { useTranslations } from 'next-intl'
+import { Question, ImageMapConfig, ImageMapFlag } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,6 +23,8 @@ interface ImageMapQuestionProps {
 }
 
 export function ImageMapQuestion({ question, answers, onAnswerChange }: ImageMapQuestionProps) {
+  const t = useTranslations('quiz')
+  const tc = useTranslations('common')
   const [selectedFlag, setSelectedFlag] = useState<ImageMapFlag | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [tempAnswer, setTempAnswer] = useState('')
@@ -33,7 +36,7 @@ export function ImageMapQuestion({ question, answers, onAnswerChange }: ImageMap
     return (
       <div className="space-y-4">
         <p className="text-gray-900">{question.prompt}</p>
-        <p className="text-red-500">Error: Image map configuration is missing</p>
+        <p className="text-red-500">{t('imageMapMissing')}</p>
       </div>
     )
   }
@@ -79,15 +82,15 @@ export function ImageMapQuestion({ question, answers, onAnswerChange }: ImageMap
       <p className="text-gray-900">{question.prompt}</p>
 
       <div className="flex justify-between text-sm text-gray-500">
-        <span>Click on the flags to answer</span>
-        <span>{getAnsweredCount()}/{config.flags.length} answered</span>
+        <span>{t('clickFlags')}</span>
+        <span>{t('imageMapAnswered', { answered: getAnsweredCount(), total: config.flags.length })}</span>
       </div>
 
       {/* Image with flags */}
       <div className="relative border rounded-lg overflow-hidden">
         <img
           src={config.base_image_url}
-          alt="Question image"
+          alt={t('questionImageAlt')}
           className="w-full h-auto"
           draggable={false}
         />
@@ -135,11 +138,11 @@ export function ImageMapQuestion({ question, answers, onAnswerChange }: ImageMap
               {/* Text Input */}
               {selectedFlag.answer_type === 'text' && (
                 <div className="space-y-2">
-                  <Label>Your Answer</Label>
+                  <Label>{t('yourAnswer')}</Label>
                   <Input
                     value={tempAnswer}
                     onChange={(e) => setTempAnswer(e.target.value)}
-                    placeholder="Type your answer..."
+                    placeholder={t('typeYourAnswer')}
                     autoFocus
                   />
                 </div>
@@ -148,7 +151,7 @@ export function ImageMapQuestion({ question, answers, onAnswerChange }: ImageMap
               {/* MCQ Input */}
               {selectedFlag.answer_type === 'mcq' && selectedFlag.choices && (
                 <div className="space-y-2">
-                  <Label>Select your answer</Label>
+                  <Label>{t('selectYourAnswer')}</Label>
                   <RadioGroup
                     value={tempAnswer}
                     onValueChange={setTempAnswer}
@@ -195,10 +198,10 @@ export function ImageMapQuestion({ question, answers, onAnswerChange }: ImageMap
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancel
+                  {tc('cancel')}
                 </Button>
                 <Button onClick={handleSaveAnswer}>
-                  Save Answer
+                  {t('saveAnswer')}
                 </Button>
               </div>
             </div>

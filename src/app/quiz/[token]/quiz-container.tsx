@@ -296,7 +296,10 @@ export function QuizContainer({ assignment, shareLinkId, token }: QuizContainerP
   if (journeyCompleted) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto space-y-6">
+          <div className="flex justify-end">
+            <LanguageToggle />
+          </div>
           <Card>
             <CardHeader>
               <CardTitle>{t('journeyComplete')}</CardTitle>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Question } from '@/lib/supabase/types'
 import { Textarea } from '@/components/ui/textarea'
 
@@ -10,11 +11,12 @@ interface OpenQuestionProps {
 }
 
 export function OpenQuestion({ question, answer, onChange }: OpenQuestionProps) {
+  const t = useTranslations('quiz')
   return (
     <div className="space-y-4">
       <p className="text-gray-900">{question.prompt}</p>
       <Textarea
-        placeholder="Type your answer here..."
+        placeholder={t('typeAnswer')}
         value={answer}
         onChange={(e) => onChange(e.target.value)}
         rows={5}

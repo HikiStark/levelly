@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { QuizContainer } from './quiz-container'
+import { LanguageToggle } from '@/components/language-toggle'
 
 export default async function QuizPage({
   params,
@@ -39,10 +40,15 @@ export default async function QuizPage({
   if (assignment.status !== 'published') {
     const t = await getTranslations('quiz')
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('notAvailableTitle')}</h1>
-          <p className="text-gray-600">{t('notAvailable')}</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-3xl mx-auto px-4 pt-6 flex justify-end">
+          <LanguageToggle />
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('notAvailableTitle')}</h1>
+            <p className="text-gray-600">{t('notAvailable')}</p>
+          </div>
         </div>
       </div>
     )

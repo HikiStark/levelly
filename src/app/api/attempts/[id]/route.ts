@@ -11,6 +11,7 @@ interface AttemptWithRelations extends Attempt {
     show_correct_answers: boolean
     show_ai_feedback: boolean
     show_results: boolean
+    guidance_note: string | null
   } | null
   share_link: {
     token: string
@@ -80,7 +81,7 @@ export async function GET(
 
     const assignmentQuery = supabase
       .from('assignment')
-      .select('title, show_correct_answers, show_ai_feedback, show_results')
+      .select('title, show_correct_answers, show_ai_feedback, show_results, guidance_note')
       .eq('id', attemptBase.assignment_id)
       .maybeSingle()
 
@@ -127,7 +128,7 @@ export async function GET(
     }
 
     // Results/feedback visibility is force-disabled for students for now.
-    // Students only see a submitted confirmation and the session guidance note.
+    // Students only see a submitted confirmation and any teacher guidance notes.
     const hiddenAttempt = {
       ...attempt,
       answer: [],
@@ -139,6 +140,14 @@ export async function GET(
       max_score: 0,
       level: null,
     }
+
+    // Prefer session-level note (more specific to this step); fall back to
+    // the assignment-level note for single-session quizzes or the last session.
+    const guidanceNote =
+      attempt.session?.guidance_note?.trim() ||
+      attempt.assignment?.guidance_note?.trim() ||
+      null
+
     return NextResponse.json({
       attempt: hiddenAttempt,
       redirectInfo: null,
@@ -149,7 +158,7 @@ export async function GET(
         showAiFeedback: false,
         showResults: false,
       },
-      guidanceNote: attempt.session?.guidance_note ?? null,
+      guidanceNote,
     })
   } catch (error) {
     console.error('Error fetching attempt:', error)

@@ -228,6 +228,14 @@
     "errorGenerating": "Fehler beim Generieren des Links",
     "errorDeactivating": "Fehler beim Deaktivieren des Links"
   },
+  "guidance": {
+    "title": "Hinweis nach Abgabe",
+    "description": "Verfassen Sie eine Nachricht, die Schüler nach dem Absenden des Quiz sehen (z.B. nächste Schritte, Ermutigung oder weitere Hinweise).",
+    "label": "Nachricht an die Schüler",
+    "placeholder": "z.B. Vielen Dank für die Teilnahme! Bitte wiederholen Sie Kapitel 4 vor der nächsten Stunde...",
+    "saved": "Gespeichert.",
+    "saveFailed": "Nachricht konnte nicht gespeichert werden."
+  },
   "feedback": {
     "controlInfo": "Steuern Sie, welche Informationen Schüler nach Abschluss des Quiz sehen können.",
     "showResults": "Ergebnisse für Schüler anzeigen",
@@ -357,6 +365,7 @@
     "submittedTitle": "Abgabe empfangen",
     "submittedDesc": "Vielen Dank für das Absenden. Ihre Lehrkraft hat sich entschieden, keine detaillierten Ergebnisse anzuzeigen.",
     "guidanceTitle": "Hinweis Ihrer Lehrkraft",
+    "continueNext": "Weiter zur nächsten Sitzung",
     "loading": "Ergebnisse werden geladen...",
     "notFound": "Ergebnisse nicht gefunden",
     "title": "{quizTitle} Ergebnisse",
@@ -388,6 +397,8 @@
     "feedback": "Feedback: {text}"
   },
   "journey": {
+    "submittedTitle": "Alle Sitzungen abgesendet",
+    "submittedDesc": "Vielen Dank für das Absenden. Ihre Lehrkraft hat sich entschieden, keine detaillierten Ergebnisse anzuzeigen.",
     "loading": "Zusammenfassung wird geladen...",
     "notFound": "Zusammenfassung nicht gefunden",
     "title": "{quizTitle} - Gesamtergebnisse",

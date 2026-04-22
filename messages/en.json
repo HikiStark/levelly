@@ -228,6 +228,14 @@
     "errorGenerating": "Error generating link",
     "errorDeactivating": "Error deactivating link"
   },
+  "guidance": {
+    "title": "Guidance Message",
+    "description": "Write a message students will see after submitting the quiz (e.g. next steps, encouragement, or additional context).",
+    "label": "Message to students",
+    "placeholder": "e.g. Thanks for completing the quiz! Please review chapter 4 before our next class...",
+    "saved": "Saved.",
+    "saveFailed": "Failed to save guidance message."
+  },
   "feedback": {
     "controlInfo": "Control what information students can see after completing the quiz.",
     "showResults": "Show results to students",
@@ -357,6 +365,7 @@
     "submittedTitle": "Submission received",
     "submittedDesc": "Thank you for completing this quiz. Your teacher has chosen not to share detailed results.",
     "guidanceTitle": "A note from your teacher",
+    "continueNext": "Continue to next session",
     "loading": "Loading results...",
     "notFound": "Results not found",
     "title": "{quizTitle} Results",
@@ -388,6 +397,8 @@
     "feedback": "Feedback: {text}"
   },
   "journey": {
+    "submittedTitle": "All sessions submitted",
+    "submittedDesc": "Thank you for completing all sessions. Your teacher has chosen not to share detailed results.",
     "loading": "Loading journey summary...",
     "notFound": "Summary not found",
     "title": "{quizTitle} - Overall Results",

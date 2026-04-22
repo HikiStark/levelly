@@ -36,7 +36,7 @@ export function LikertQuestion({ question, value, onChange }: LikertQuestionProp
         <div className="mb-4">
           <img
             src={question.image_url}
-            alt="Question image"
+            alt={t('questionImageAlt')}
             className="max-w-full h-auto rounded-lg"
           />
         </div>

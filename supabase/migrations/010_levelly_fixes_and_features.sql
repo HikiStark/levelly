@@ -48,6 +48,12 @@ ALTER TABLE session
 
 COMMENT ON COLUMN session.guidance_note IS 'Teacher-authored note shown to students after they finish grading this session';
 
+-- 3b. Assignment-level guidance note (shown on the submitted/thank-you screen)
+ALTER TABLE assignment
+  ADD COLUMN IF NOT EXISTS guidance_note TEXT;
+
+COMMENT ON COLUMN assignment.guidance_note IS 'Teacher-authored message shown to students after submitting the quiz, regardless of show_results';
+
 -- 4. Likert scale question type
 ALTER TABLE question DROP CONSTRAINT IF EXISTS question_type_check;
 ALTER TABLE question ADD CONSTRAINT question_type_check
