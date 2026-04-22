@@ -1,18 +1,23 @@
--- Migration: Levelly fixes and new features
+-- Migration: Levelly fixes and new features (idempotent)
 -- 1. Student demographics (gender, age) required at quiz entrance
 -- 2. Master "show results" toggle per assignment
 -- 3. Per-session teacher guidance note shown after grading
 -- 4. New Likert-scale question type
+--
+-- Safe to re-run: every ADD COLUMN uses IF NOT EXISTS and every
+-- constraint is dropped before being re-added.
 
 -- 1. Student demographics
 ALTER TABLE student_journey
   ADD COLUMN IF NOT EXISTS student_age INTEGER,
   ADD COLUMN IF NOT EXISTS student_gender TEXT;
 
+ALTER TABLE student_journey DROP CONSTRAINT IF EXISTS student_journey_gender_check;
 ALTER TABLE student_journey
   ADD CONSTRAINT student_journey_gender_check
     CHECK (student_gender IS NULL OR student_gender IN ('male', 'female', 'non_binary', 'prefer_not_to_say'));
 
+ALTER TABLE student_journey DROP CONSTRAINT IF EXISTS student_journey_age_check;
 ALTER TABLE student_journey
   ADD CONSTRAINT student_journey_age_check
     CHECK (student_age IS NULL OR (student_age >= 5 AND student_age <= 100));
@@ -21,10 +26,12 @@ ALTER TABLE attempt
   ADD COLUMN IF NOT EXISTS student_age INTEGER,
   ADD COLUMN IF NOT EXISTS student_gender TEXT;
 
+ALTER TABLE attempt DROP CONSTRAINT IF EXISTS attempt_gender_check;
 ALTER TABLE attempt
   ADD CONSTRAINT attempt_gender_check
     CHECK (student_gender IS NULL OR student_gender IN ('male', 'female', 'non_binary', 'prefer_not_to_say'));
 
+ALTER TABLE attempt DROP CONSTRAINT IF EXISTS attempt_age_check;
 ALTER TABLE attempt
   ADD CONSTRAINT attempt_age_check
     CHECK (student_age IS NULL OR (student_age >= 5 AND student_age <= 100));
